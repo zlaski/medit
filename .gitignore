@@ -50,3 +50,5 @@ compil.date
 *.log
 *.db
 *.opendb
+*.iobj
+*.ipdb
