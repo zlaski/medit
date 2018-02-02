@@ -8,14 +8,16 @@
 
 /* build lists for iso-surfaces */
 GLuint listTriaIso(pScene sc,pMesh mesh) {
+	FILE      *out;
   GLuint     dlist = 0;
   pTriangle  pt;
   pPoint     p0,p1;
   pMaterial  pm;
   pSolution  ps0,ps1;
   double     rgb[3];
-  float      iso,cx,cy,cz,cc,kc;
-  int        m,k,i,l,l1,nc,ncol;
+  float      iso,c[3][3],cc,kc;
+  int        m,k,i,l,l1,nc,ncol,zi;
+	char      *ptr,data[256];
   static double hsv[3]  = { 0.0, 1.0, 0.9 };
   static int    idir[5] = {0,1,2,0,1};
 
@@ -29,6 +31,15 @@ GLuint listTriaIso(pScene sc,pMesh mesh) {
   glNewList(dlist,GL_COMPILE);
   if ( glGetError() )  return(0);
 
+  if ( ddebug ) {
+		strcpy(data,mesh->name);
+		ptr = strstr(data,".mesh");
+		if ( ptr ) *ptr = '\0';
+		strcat(data,".data");
+		out = fopen(data,"w");
+		fprintf(stdout,"  %% Opening %s\n",data);
+	}
+	
   /* build list */
   glBegin(GL_LINES);
   ncol = NBCOL;
@@ -43,7 +54,7 @@ GLuint listTriaIso(pScene sc,pMesh mesh) {
       iso    = sc->iso.val[MAXISO-1];
       hsv[0] = sc->iso.col[MAXISO-1];
     }
-
+    /* convert to color */
     hsvrgb(hsv,rgb);
     glColor3dv(rgb);
 
@@ -61,55 +72,87 @@ GLuint listTriaIso(pScene sc,pMesh mesh) {
 
         /* analyze edges */
         nc = 0;
-        cx = cy = cz = 0.0;
-        for (l=0; l<3; l++) {
+				zi = 0;
+				memset(c,0,9*sizeof(float));
+				for (l=0; l<3; l++) {
           l1  = idir[l+1];
           p0  = &mesh->point[pt->v[l]];
           p1  = &mesh->point[pt->v[l1]];
           ps0 = &mesh->sol[pt->v[l]];
           ps1 = &mesh->sol[pt->v[l1]];
-          if ( (ps0->bb > iso && ps1->bb <= iso) ||
-               (ps0->bb < iso && ps1->bb >= iso) ) {
-            cc = 0.0;
-            if ( fabs(ps1->bb-ps0->bb) > 0.0 )
-              cc = (iso-ps0->bb) / (ps1->bb-ps0->bb);
-            if ( cc == 0.0 || cc == 1.0 )  continue;
-            cx = p0->c[0]+cc*(p1->c[0]-p0->c[0]);
-            cy = p0->c[1]+cc*(p1->c[1]-p0->c[1]);
+          if ( (ps0->bb > iso && ps1->bb < iso) || (ps0->bb < iso && ps1->bb > iso) ) {
+            cc = fabs((iso-ps0->bb) / (ps1->bb-ps0->bb));
+            c[nc][0] = p0->c[0] + cc*(p1->c[0]-p0->c[0]);
+            c[nc][1] = p0->c[1] + cc*(p1->c[1]-p0->c[1]);
+            if ( mesh->dim == 3)  c[nc][2] = p0->c[2]+cc*(p1->c[2]-p0->c[2]);
             nc++;
-            if ( mesh->dim == 2 )
-              glVertex2f(cx,cy);
-            else {
-              cz = p0->c[2]+cc*(p1->c[2]-p0->c[2]);
-              glVertex3f(cx,cy,cz);
-            }
           }
-          else if ( ps0->bb == iso && ps1->bb == iso ) {
-            nc = 2;
-            if ( mesh->dim == 2 ) {
-              glVertex2f(p0->c[0],p0->c[1]);
-              glVertex2f(p1->c[0],p1->c[1]);
-              break;
+          else if ( ps0->bb == iso  && ps1->bb == iso ) {
+	          if ( mesh->dim == 2 ) {
+							c[0][0] = p0->c[0];  c[0][1] = p0->c[1];
+							c[1][0] = p1->c[0];  c[1][1] = p1->c[1];
+				  	}
+						else {
+						  c[0][0] = p0->c[0];  c[0][1] = p0->c[1];  c[0][2] = p0->c[2];
+						  c[1][0] = p1->c[0];  c[1][1] = p1->c[1];  c[1][2] = p1->c[2];
+						}
+						nc = 2;
+						break;
+		      }
+          else {
+	          if ( ps0->bb == iso  && zi != pt->v[l] ) {
+					    if ( mesh->dim == 2 ) {
+							  c[nc][0] = p0->c[0];  c[nc][1] = p0->c[1];
+							}
+							else {
+							  c[nc][0] = p0->c[0];  c[nc][1] = p0->c[1];  c[nc][2] = p0->c[2];
+						  }
+              nc++;
+							zi = pt->v[l];
             }
-            else {
-              glVertex3f(p0->c[0],p0->c[1],p0->c[2]);
-              glVertex3f(p1->c[0],p1->c[1],p1->c[2]);
-              break;
-            }
+	          if ( ps1->bb == iso && zi != pt->v[l1] ) {
+					    if ( mesh->dim == 2 ) {
+							  c[nc][0] = p1->c[0];  c[nc][1] = p1->c[1];
+							}
+							else {
+							  c[nc][0] = p1->c[0];  c[nc][1] = p1->c[1];  c[nc][2] = p1->c[2];
+						  }  
+              nc++;
+              zi = pt->v[l1];
+            } 
           }
         }
-        if ( nc > 0 && nc != 2 ) {
-          if ( mesh->dim ==2 )  glVertex2f(cx,cy);
-          else                  glVertex3f(cx,cy,cz);
-        }
+	      if ( nc == 2 ) {
+	        if ( mesh->dim == 2 ) {
+		        glVertex2f(c[0][0],c[0][1]);
+		        glVertex2f(c[1][0],c[1][1]);
+		        if ( ddebug ) {
+			        fprintf(out,"%f %f\n",c[0][0]+mesh->xtra,c[0][1]+mesh->ytra);
+			        fprintf(out,"%f %f\n",c[1][0]+mesh->xtra,c[1][1]+mesh->ytra);
+            }
+		      }
+		      else {
+			      glVertex3f(c[0][0],c[0][1],c[0][2]);
+			      glVertex3f(c[1][0],c[1][1],c[1][2]);
+		        if ( ddebug ) {
+		          fprintf(out,"%f %f %f\n",c[0][0]+mesh->xtra,c[0][1]+mesh->ytra,c[0][2]+mesh->ztra);
+		          fprintf(out,"%f %f %f\n",c[1][0]+mesh->xtra,c[1][1]+mesh->ytra,c[1][2]+mesh->ztra);
+            }
+		      }
+					if ( ddebug )  fprintf(out,"\n");
+	      }
+
         k = pt->nxt;
       }
     }
   }
   glEnd();
   glEndList();
+
+	if ( ddebug )  fclose(out);
   return(dlist);
 }
+
 
 /* build lists for iso-surfaces */
 GLuint listQuadIso(pScene sc,pMesh mesh) {
@@ -197,6 +240,16 @@ GLuint listQuadIso(pScene sc,pMesh mesh) {
 }
 
 
+/* save isosurf on disk */
+static int saveListTetraIso(pMesh mesh) {
+  FILE      *outv,*outf;
+  pTetra     pt;
+  pPoint     p0,p1;
+
+	return(1);
+}
+
+
 /* build lists for iso-surfaces */
 GLuint listTetraIso(pScene sc,pMesh mesh) {
   FILE      *outv,*outf;
@@ -205,10 +258,11 @@ GLuint listTetraIso(pScene sc,pMesh mesh) {
   pPoint     p0,p1;
   pMaterial  pm;
   pSolution  ps0,ps1;
-  double     delta,rgb[4],d,ax,ay,az,bx,by,bz;
-  float      iso,n[3],cx[4],cy[4],cz[4],cc;
-  int        m,k,k1,k2,i,l,pos[4],neg[4],nbpos,nbneg,nbnul,nv,nf;
-  static double hsv[3]   = { 0.0f, 1.0f, 0.80f };
+  double     delta,rgb[4],d,ax,ay,az,bx,by,bz,cc;
+  float      iso,n[3],cx[4],cy[4],cz[4];
+  int        m,k,k1,k2,i,l,pos[4],neg[4],nbpos,nbneg,nbnul,nv,nf,idxf,posv,posf;
+	char       data[64];
+  static double hsv[3]   = { 0.0, 1.0, 0.8 };
   static int tn[4] = {0,0,1,1};
   static int tp[4] = {0,1,1,0};
 
@@ -228,25 +282,33 @@ GLuint listTetraIso(pScene sc,pMesh mesh) {
   glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
   glDepthMask(GL_FALSE);
 
-  if (ddebug) {
-	outv = fopen("vertex.mesh","w");
-	fprintf(outv,"MeshVersionFormatted 1\n Dimension\n 3\n\nVertices\n \n");
-	outf = fopen("faces.mesh2","w");
-	fprintf(outv,"Triangles\n \n");
-  }
-  nv = nf = 0;
-
   glBegin(GL_TRIANGLES);
   for (i=MAXISO-1; i>=0; i--) {
     iso = sc->iso.val[i];
+
+	  if (ddebug) {
+			idxf = 1;
+			sprintf(data,"vertex%d.%d.mesh",i,idxf);
+		  outv = fopen(data,"w");
+		  fprintf(outv,"MeshVersionFormatted 1\n Dimension\n 3\n\nVertices\n");
+			posv = ftell(outv);
+			fprintf(outv,"xxxxxxxx\n");
+
+			sprintf(data,"faces%d.%d.mesh",i,idxf);
+		  outf = fopen(data,"w");
+		  fprintf(outf,"\n Triangles\n");
+			posf = ftell(outf);
+			fprintf(outf,"xxxxxxxx\n");
+	  }
+		nv = nf = 0;
 
     /* base color */
     /*hsv[0] = 240.0f*(1.0f - (iso-sc->iso.val[0])/delta);*/
     hsv[0] = sc->iso.col[i];
     hsvrgb(hsv,rgb);
-    rgb[0] = MEDIT_MIN(1.0,rgb[0]+BASETR);
-    rgb[1] = MEDIT_MIN(1.0,rgb[1]+BASETR);
-    rgb[2] = MEDIT_MIN(1.0,rgb[2]+BASETR);
+    rgb[0] = min(1.0,rgb[0]+BASETR);
+    rgb[1] = min(1.0,rgb[1]+BASETR);
+    rgb[2] = min(1.0,rgb[2]+BASETR);
     rgb[3] = BASETR + (float)(i-1)/(float)MAXISO*(1.0-BASETR);
     /*rgb[3] = 0.5; */  
     glColor4dv(rgb);
@@ -290,8 +352,8 @@ GLuint listTetraIso(pScene sc,pMesh mesh) {
             p1  = &mesh->point[pt->v[k2]];
             ps0 = &mesh->sol[pt->v[k1]];
             ps1 = &mesh->sol[pt->v[k2]];
-            cc = 0.0f;
-            if ( fabs(ps1->bb-ps0->bb) > 0.0f )
+            cc = 0.0;
+            if ( fabs(ps1->bb-ps0->bb) > 0.0 )
               cc = (iso-ps0->bb) / (ps1->bb-ps0->bb);
             cx[l] = p0->c[0]+cc*(p1->c[0]-p0->c[0]);
             cy[l] = p0->c[1]+cc*(p1->c[1]-p0->c[1]);
@@ -305,8 +367,8 @@ GLuint listTetraIso(pScene sc,pMesh mesh) {
           n[1] = az*bx - ax*bz;
           n[2] = ax*by - ay*bx;
           d = n[0]*n[0] + n[1]*n[1] + n[2]*n[2];
-          if ( d > 0.0f ) {
-            d = 1.0f / sqrt(d);
+          if ( d > 0.0 ) {
+            d = 1.0 / sqrt(d);
             n[0] *= d;  
             n[1] *= d;  
             n[2] *= d;
@@ -316,22 +378,55 @@ GLuint listTetraIso(pScene sc,pMesh mesh) {
           glVertex3f(cx[1],cy[1],cz[1]);
           glVertex3f(cx[2],cy[2],cz[2]);
           
-	      glNormal3fv(n);
+	        glNormal3fv(n);
           glVertex3f(cx[0],cy[0],cz[0]);
           glVertex3f(cx[2],cy[2],cz[2]);
           glVertex3f(cx[3],cy[3],cz[3]);
 
           if ( ddebug ) {
-            fprintf(outv,"%f %f %f 0\n",cx[0],cy[0],cz[0]);
-            fprintf(outv,"%f %f %f 0\n",cx[1],cy[1],cz[1]);
-            fprintf(outv,"%f %f %f 0\n",cx[2],cy[2],cz[2]);
-            fprintf(outv,"%f %f %f 0\n",cx[3],cy[3],cz[3]);
-
+            fprintf(outv,"%f %f %f 0\n",cx[0]+mesh->xtra,cy[0]+mesh->ytra,cz[0]+mesh->ztra);
+            fprintf(outv,"%f %f %f 0\n",cx[1]+mesh->xtra,cy[1]+mesh->ytra,cz[1]+mesh->ztra);
+            fprintf(outv,"%f %f %f 0\n",cx[2]+mesh->xtra,cy[2]+mesh->ytra,cz[2]+mesh->ztra);
+            fprintf(outv,"%f %f %f 0\n",cx[3]+mesh->xtra,cy[3]+mesh->ytra,cz[3]+mesh->ztra);
+            
             fprintf(outf,"%d %d %d 0\n",nv+1,nv+2,nv+3);
             fprintf(outf,"%d %d %d 0\n",nv+1,nv+3,nv+4);
+	          nv+= 4;
+	          nf+= 2;
+
+            if ( nf >= 2000000 ) {
+							rewind(outv);
+						  printf("  Vertices %d   Triangles %d\n",nv,nf);
+							fseek(outv,posv,0);
+							fprintf(outv,"%8d\n",nv);
+							fclose(outv);
+							
+							fprintf(outf,"\nEnd\n");
+							rewind(outf);
+							fseek(outf,posf,0);
+							fprintf(outf,"%8d\n",nf);
+							fclose(outf);
+							nv = 0;
+							nf = 0;
+							
+							idxf++;
+							sprintf(data,"vertex%d.%d.mesh",i,idxf);
+						  outv = fopen(data,"w");
+						  fprintf(outv,"MeshVersionFormatted 1\n Dimension\n 3\n\nVertices\n");
+							posv = ftell(outv);
+							fprintf(outv,"xxxxxxxx\n");
+						  
+							sprintf(data,"faces%d.%d.mesh",i,idxf);
+						  outf = fopen(data,"w");						
+						  fprintf(outf,"\nTriangles\n");
+							posf = ftell(outf);
+							fprintf(outf,"xxxxxxxx\n");	  
+	          }
           }
-          nv+= 4;
-          nf+= 2;
+          else {
+            nv+= 4;
+            nf+= 2;
+          }
         }
         else if ( !nbnul ) {
           for (l=0; l<3; l++) {
@@ -341,8 +436,8 @@ GLuint listTetraIso(pScene sc,pMesh mesh) {
             p1 = &mesh->point[pt->v[k2]];
             ps0 = &mesh->sol[pt->v[k1]];
             ps1 = &mesh->sol[pt->v[k2]];
-            cc = 0.0f;
-            if ( fabs(ps1->bb-ps0->bb) > 0.0f ) 
+            cc = 0.0;
+            if ( fabs(ps1->bb-ps0->bb) > 0.0 ) 
               cc = (iso-ps0->bb) / (ps1->bb-ps0->bb);
             cx[l] = p0->c[0]+cc*(p1->c[0]-p0->c[0]);
             cy[l] = p0->c[1]+cc*(p1->c[1]-p0->c[1]);
@@ -355,7 +450,7 @@ GLuint listTetraIso(pScene sc,pMesh mesh) {
           n[1] = az*bx - ax*bz;
           n[2] = ax*by - ay*bx;
           d = n[0]*n[0] + n[1]*n[1] + n[2]*n[2];
-          if ( d > 0.0f ) {
+          if ( d > 0.0 ) {
             d = 1.0f / sqrt(d);
             n[0] *= d;
             n[1] *= d;
@@ -367,27 +462,71 @@ GLuint listTetraIso(pScene sc,pMesh mesh) {
           glVertex3f(cx[2],cy[2],cz[2]);
 
           if ( ddebug ) {
-            fprintf(outv,"%f %f %f 0\n",cx[0],cy[0],cz[0]);
-            fprintf(outv,"%f %f %f 0\n",cx[1],cy[1],cz[1]);
-            fprintf(outv,"%f %f %f 0\n",cx[2],cy[2],cz[2]);
+            fprintf(outv,"%f %f %f 0\n",cx[0]+mesh->xtra,cy[0]+mesh->ytra,cz[0]+mesh->ztra);
+            fprintf(outv,"%f %f %f 0\n",cx[1]+mesh->xtra,cy[1]+mesh->ytra,cz[1]+mesh->ztra);
+            fprintf(outv,"%f %f %f 0\n",cx[2]+mesh->xtra,cy[2]+mesh->ytra,cz[2]+mesh->ztra);
+            
             fprintf(outf,"%d %d %d 0\n",nv+1,nv+2,nv+3);
+            nv += 3;
+            nf += 1;
+
+            if ( nf >= 10000000 ) {
+						  printf("  Vertices %d   Triangles %d\n",nv,nf);
+							rewind(outv);
+							fseek(outv,posv,0);
+							fprintf(outv,"%8d\n",nv);
+							fclose(outv);
+							
+							fprintf(outf,"\nEnd\n");
+							rewind(outf);
+							fseek(outf,posf,0);
+							fprintf(outf,"%8d\n",nf);
+							fclose(outf);
+							
+							nv = 0;
+							nf = 0;
+							idxf++;
+							sprintf(data,"vertex%d.%d.mesh",i,idxf);
+						  outv = fopen(data,"w");
+						  fprintf(outv,"MeshVersionFormatted 1\n Dimension\n 3\n\nVertices\n");
+							posv = ftell(outv);
+							fprintf(outv,"xxxxxxxx\n");
+						  
+						  sprintf(data,"faces%d.%d.mesh",i,idxf);
+						  outf = fopen(data,"w");
+						  fprintf(outf,"\nTriangles\n");
+							posf = ftell(outf);
+							fprintf(outf,"xxxxxxxx\n");	  
+	          }
           }
-          nv += 3;
-          nf += 1;
+          else {
+            nv += 3;
+            nf += 1;
+          }
         }
         k = pt->nxt;
       }
     }
+
+	  if ( ddebug ) {
+		  printf("  Vertices %d   Triangles %d\n",nv,nf);
+			rewind(outv);
+			fseek(outv,posv,0);
+			fprintf(outv,"%8d\n",nv);
+			fclose(outv);
+
+			fprintf(outf,"\nEnd\n");
+			rewind(outf);
+			fseek(outf,posf,0);
+			fprintf(outf,"%8d\n",nf);
+			fclose(outf);
+	  }
+
   }
   glEnd();
   glDepthMask(GL_TRUE);
   glDisable(GL_BLEND);
 
-  if ( ddebug ) {
-    fclose(outv);
-    fclose(outf);
-  }
-  printf("  Vertices %d   Triangles %d\n",nv,nf);
   glEndList();
   return(dlist);
 }
@@ -414,7 +553,7 @@ int tetraIsoPOVray(pScene sc,pMesh mesh) {
 
   strcpy(data,mesh->name);
   ptr = strstr(data,".mesh");
-  if ( ptr )  ptr = NULL;
+  if ( ptr )  ptr = '\0';
   strcat(data,".pov"); 
   if ( ddebug )  fprintf(stdout,"  Writing POVRay file %s\n",data);
   isofil = fopen(data,"w");

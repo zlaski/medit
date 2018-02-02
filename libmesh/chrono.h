@@ -1,8 +1,14 @@
-#ifdef __cplusplus
-extern "C" {
-#endif
+#ifndef _CHRONO_H
+#define _CHRONO_H
 
 #include <time.h>
+#ifdef _WIN32
+#include <windows.h>
+#include "rusage.h"
+#else
+#include <sys/time.h>
+#include <sys/resource.h>
+#endif
 
 #ifndef  ON
 #define  RESET  0
@@ -10,23 +16,21 @@ extern "C" {
 #define  OFF    2
 #endif
 
-#define  TIMEMAX   16
-#define  MAXCLK    ( 1073741823. / (double)CLOCKS_PER_SEC )
-
+#define  BIG      1e6
+#define  BIG1     1e-6
+#define  TIMEMAX  12
 
 typedef struct mytime {
-  double    ctim,dtim;
-  time_t    ptim;
-  short     call;
+	double  gini,gend,gdif,uini,uend,udif,sini,send,sdif;
+  struct  timeval rutim;
+	struct  rusage  ru;
+  int     call;
 } mytime;
 
 
 /* prototypes */
 void   chrono(int cmode,mytime *ptt);
-double gttime(mytime t);
 void   tminit(mytime *t,int maxtim);
+char  *printim(double );
 
-
-#ifdef __cplusplus
-}
 #endif

@@ -39,7 +39,7 @@ static void drawTria(pScene sc,pMesh mesh,int k) {
   cx = (p0->c[0] + p1->c[0] + p2->c[0]) / 3.;
   cy = (p0->c[1] + p1->c[1] + p2->c[1]) / 3.;
   cz = (p0->c[2] + p1->c[2] + p2->c[2]) / 3.;
-  shrink = 0.95 * sc->shrink;
+  shrink = 0.995 * sc->shrink;
 
   glBegin(GL_TRIANGLES);
   glColor3f(1.0-pm->dif[0],1.0-pm->dif[1],1.0-pm->dif[2]);
@@ -55,8 +55,8 @@ static void drawTria(pScene sc,pMesh mesh,int k) {
   n[1] = az*bx - ax*bz;
   n[2] = ax*by - ay*bx;
   dd = n[0]*n[0] + n[1]*n[1] + n[2]*n[2];
-  if ( dd > 0.0f ) {
-    dd = 1.0f / sqrt(dd);
+  if ( dd > 0.0 ) {
+    dd = 1.0 / sqrt(dd);
     n[0] *= dd;
     n[1] *= dd;
     n[2] *= dd;
@@ -81,6 +81,7 @@ static void drawTria(pScene sc,pMesh mesh,int k) {
   output3(p2->c[0],p2->c[1],p2->c[2],"%d",pt->v[2]);
 }
 
+
 static void drawQuad(pScene sc,pMesh mesh,int k) {
   pMaterial  pm;
   pQuad      pq;
@@ -103,7 +104,7 @@ static void drawQuad(pScene sc,pMesh mesh,int k) {
   cx = (p0->c[0] + p1->c[0] + p2->c[0] + p3->c[0]) / 4.;
   cy = (p0->c[1] + p1->c[1] + p2->c[1] + p3->c[1]) / 4.;
   cz = (p0->c[2] + p1->c[2] + p2->c[2] + p3->c[2]) / 4.;
-  shrink = 0.95 * sc->shrink;
+  shrink = 0.995 * sc->shrink;
 
   glBegin(GL_QUADS);
   glColor3f(1.0-pm->dif[0],1.0-pm->dif[1],1.0-pm->dif[2]);
@@ -150,6 +151,7 @@ static void drawQuad(pScene sc,pMesh mesh,int k) {
   output3(p2->c[0],p2->c[1],p2->c[2],"%d",pq->v[2]);
   output3(p3->c[0],p3->c[1],p3->c[2],"%d",pq->v[3]);
 }
+
 
 static void drawTets(pScene sc,pMesh mesh,int k) {
   pMaterial  pm;
@@ -224,6 +226,7 @@ static void drawTets(pScene sc,pMesh mesh,int k) {
     circumSphere(sc,mesh,LTets,k);
 }
 
+
 static void drawHexa(pScene sc,pMesh mesh,int k) {
   pMaterial  pm;
   pHexa      ph;
@@ -292,6 +295,7 @@ static void drawHexa(pScene sc,pMesh mesh,int k) {
   }
 }
 
+
 static void drawPoint(pScene sc,pMesh mesh,int k) {
   pPoint      pt;
 
@@ -333,7 +337,6 @@ static void infoData(pScene sc,pMesh mesh,int k,int typel) {
               ps->m[0],ps->m[1],ps->m[2],ps->m[3],ps->m[4],ps->m[5]);
     drawEllipsoid(sc,mesh,typel,k);
   }
-  fflush(stdout); /* add J. Morice 12/2008 */
 }
 
 
@@ -410,7 +413,6 @@ static void infoEntity(pScene sc,pMesh mesh,int k,int type) {
     }
     break;  
   }
-  fflush(stdout); /* add J. Morice 12/2008 */
 }
 
 
@@ -429,11 +431,11 @@ static int getColorRange(Color *c,pMesh mesh) {
   if ( nbits < 32 ) {
     nbmax = 2 << (nbits-1);
     if ( nbmax < mesh->nt+mesh->nq+mesh->ntet+mesh->nhex ) {
-      fprintf(stderr,"  Sorry. Picking disabled. (%ld,%d)\n",nbmax,mesh->nt+mesh->nq);
+      fprintf(stderr,"  Sorry. Picking disabled. (%d,%d)\n",nbmax,mesh->nt+mesh->nq);
       return(0);
     }
     else if ( nbmax < 0.1*(mesh->ntet+mesh->nhex) ) {
-      fprintf(stderr,"  Sorry. Picking disabled. (%ld,%d)\n",nbmax,mesh->nt+mesh->nq);
+      fprintf(stderr,"  Sorry. Picking disabled. (%d,%d)\n",nbmax,mesh->nt+mesh->nq);
       return(0);
     }
   }
@@ -463,6 +465,8 @@ static int getColorRange(Color *c,pMesh mesh) {
   for (i=0; i<aBits; i++)  mask |= 1 << i;
   c->aMask  = mask;
   c->aBits  = 8 - aBits;
+
+  return(1);
 }
 
 
@@ -512,12 +516,12 @@ static void displayTria(pScene sc,pMesh mesh,Color *c) {
         p2 = &mesh->point[pt->v[2]];
 
         kk = 2*k+1;
-	    glColor4ub((kk & c->rMask) >> c->rShift << c->rBits,
- 	               (kk & c->gMask) >> c->gShift << c->gBits,
-	               (kk & c->bMask) >> c->bShift << c->bBits,
-		           (kk & c->aMask)              << c->aBits);
+	      glColor4ub((kk & c->rMask) >> c->rShift << c->rBits,
+ 	                 (kk & c->gMask) >> c->gShift << c->gBits,
+	                 (kk & c->bMask) >> c->bShift << c->bBits,
+		               (kk & c->aMask)              << c->aBits);
 
-	    glVertex3dv(p0->c);
+	      glVertex3dv(p0->c);
         glVertex3dv(p1->c);
         glVertex3dv(p2->c);
       }
@@ -527,7 +531,7 @@ static void displayTria(pScene sc,pMesh mesh,Color *c) {
   glEnd();
 }
 
-static int displayQuad(pScene sc,pMesh mesh,Color *c) {
+static void displayQuad(pScene sc,pMesh mesh,Color *c) {
   pQuad        pq;
   pPoint       p0,p1,p2,p3;
   pMaterial    pm;
@@ -552,12 +556,12 @@ static int displayQuad(pScene sc,pMesh mesh,Color *c) {
 
         kk = base + k;
         kk = 2*kk + 1;
-	glColor4ub((kk & c->rMask) >> c->rShift << c->rBits,
- 	           (kk & c->gMask) >> c->gShift << c->gBits,
-	           (kk & c->bMask) >> c->bShift << c->bBits,
-		   (kk & c->aMask)              << c->aBits);
+	    glColor4ub((kk & c->rMask) >> c->rShift << c->rBits,
+ 	               (kk & c->gMask) >> c->gShift << c->gBits,
+	               (kk & c->bMask) >> c->bShift << c->bBits,
+		           (kk & c->aMask)              << c->aBits);
 
-	glVertex3f(p0->c[0],p0->c[1],p0->c[2]);
+	    glVertex3f(p0->c[0],p0->c[1],p0->c[2]);
         glVertex3f(p1->c[0],p1->c[1],p1->c[2]);
         glVertex3f(p2->c[0],p2->c[1],p2->c[2]);
         glVertex3f(p3->c[0],p3->c[1],p3->c[2]);
@@ -568,7 +572,7 @@ static int displayQuad(pScene sc,pMesh mesh,Color *c) {
   glEnd();
 }
 
-static int displayTets(pScene sc,pMesh mesh,Color *c) {
+static void displayTets(pScene sc,pMesh mesh,Color *c) {
   pTetra       ptt;
   pPoint       p0,p1,p2;
   pMaterial    pm;
@@ -613,7 +617,7 @@ static int displayTets(pScene sc,pMesh mesh,Color *c) {
   glEnd();
 }
 
-static int displayHexa(pScene sc,pMesh mesh,Color *c) {
+static void displayHexa(pScene sc,pMesh mesh,Color *c) {
   pHexa        ph;
   pPoint       p0,p1,p2,p3;
   pMaterial    pm;

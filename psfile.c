@@ -1,7 +1,5 @@
-#ifndef IGL
 #ifdef __cplusplus
 extern "C" {
-#endif
 #endif
 
 
@@ -201,8 +199,6 @@ void writeEPSRow(FILE *out,char key,ubyte *buffer,int size,ubyte bckbyt) {
 }
 
 
-#ifndef IGL
 #ifdef __cplusplus
 }
-#endif
 #endif

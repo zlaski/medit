@@ -1,9 +1,9 @@
 #ifndef _GRAFIC_H
 #define _GRAFIC_H
 
-#ifdef IGL
-#  include "IGLParams.h"
-#  include <igl/anttweakbar/ReAntTweakBar.h>
+#ifdef _WIN32
+/* Can creep in from windows headers */
+#undef S_NORMAL
 #endif
 
 #define MAX_LIST  4
@@ -73,6 +73,11 @@ enum {VECTOR,CONE};
 #define S_CRITP    (1<<6)
 #define S_PARTICLE (1<<7)
 
+#define MAX_PRT    10
+#define MAX_LST    1024
+#define MAX_CPT    5000
+#define HSIZ       0.03
+
     
 typedef struct sperspective {
   float      fovy,depth;
@@ -111,8 +116,8 @@ typedef struct _cell {
 
 typedef struct transform {
   float    pos[3];                /* current mouse position */
-  float    angle,axis[3];         /* rotation angle + axis  */ // Alec: really this is delta-angle+axis
-  float    panx,pany,opanx,opany; /* screen translation     */ // Alec: also this is delta
+  float    angle,axis[3];         /* rotation angle + axis  */
+  float    panx,pany,opanx,opany; /* screen translation     */
   float    matrix[16],oldmat[16]; /* transformation matrix  */
   float    rot[16],tra[16];
   int      mstate,mbutton,manim;
@@ -144,9 +149,9 @@ typedef Camera * pCamera;
 /* scene parameters */
 typedef struct sparam {
   float     back[4],line[4],edge[4],sunpos[4],clip[6];
-  float     cm,dpi,coeff,cumtim,cumpertime,maxtime,pertime,dt;
-  float     eyesep,linewidth,pointsize;
-  short     xi,yi,xs,ys,pxs,pys;
+  float     cm,dpi,coeff,cumtim,cumpertime,maxtime,timdep,pertime,dt;
+  float     eyesep,linewidth,isowidth,pointsize;
+  short     xi,yi,xs,ys;
   int       nbmat;
   char      pscolor[10];
   ubyte     sunp,linc,advtim,nbpart;
@@ -180,9 +185,17 @@ typedef struct strgrd {
 } Strgrd;
 typedef Strgrd * pStrgrd;
 
+typedef struct spart {
+  double    cb[4];
+  float     pos[MAX_PRT+1][3],col[MAX_PRT+1][3],size,norm,ct,step;
+  int       nsdep,cur;
+  ubyte     flag;
+} Particle;
+typedef Particle *pParticle;
+
+
 typedef struct siso {
   float  val[MAXISO+2];
-  // Alec: ranges from 0 to 240
   float  col[MAXISO+2];
   ubyte  palette,ptyp;
 } Iso;
@@ -224,11 +237,6 @@ typedef struct scene {
   ubyte      type;
   ubyte      isotyp;
   ubyte      picked;
-#ifdef IGL
-  igl::anttweakbar::ReTwBar rebar;
-  // Pointer so recompiling is easier
-  IGLParams * igl_params; 
-#endif
 } Scene;
 typedef Scene * pScene;
 

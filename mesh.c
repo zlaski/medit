@@ -64,39 +64,39 @@ void meshCoord(pMesh mesh,int displ) {
    for (k=1; k<=mesh->np; k++) {
       ppt = &mesh->point[k];
 	  ps  = &mesh->sol[k];
-	  ppt->c[0] = ppt->c[0] + mul*ps->m[0];
-	  ppt->c[1] = ppt->c[1] + mul*ps->m[1];
+	  ppt->c[0] = mesh->xtra + ppt->c[0] + mul*ps->m[0];
+	  ppt->c[1] = mesh->ytra + ppt->c[1] + mul*ps->m[1];
     }
   }
   else {
-	vold = 0.0;
-	for (k=1; k<=mesh->ntet; k++) {
-	  pt1 = &mesh->tetra[k];
-	  if ( !pt1->v[0] )  continue;
-	  c1 = &mesh->point[pt1->v[0]].c[0];
-	  c2 = &mesh->point[pt1->v[1]].c[0];
-	  c3 = &mesh->point[pt1->v[2]].c[0];
-	  c4 = &mesh->point[pt1->v[3]].c[0];
-	  vold += volTet(c1,c2,c3,c4);
-	}
+	  vold = 0.0;
+	  for (k=1; k<=mesh->ntet; k++) {
+	    pt1 = &mesh->tetra[k];
+	    if ( !pt1->v[0] )  continue;
+	    c1 = &mesh->point[pt1->v[0]].c[0];
+	    c2 = &mesh->point[pt1->v[1]].c[0];
+	    c3 = &mesh->point[pt1->v[2]].c[0];
+	    c4 = &mesh->point[pt1->v[3]].c[0];
+	    vold += volTet(c1,c2,c3,c4);
+	  }
     for (k=1; k<=mesh->np; k++) {
       ppt = &mesh->point[k];
-	  ps  = &mesh->sol[k];
-	  ppt->c[0] = mesh->xtra + ppt->c[0] + mul*ps->m[0];
-	  ppt->c[1] = mesh->ytra + ppt->c[1] + mul*ps->m[1];
-	  ppt->c[2] = mesh->ztra + ppt->c[2] + mul*ps->m[2];
+	    ps  = &mesh->sol[k];
+	    ppt->c[0] = mesh->xtra + ppt->c[0] + mul*ps->m[0];
+	    ppt->c[1] = mesh->ytra + ppt->c[1] + mul*ps->m[1];
+	    ppt->c[2] = mesh->ztra + ppt->c[2] + mul*ps->m[2];
     }
-	volf = 0.0;
-	for (k=1; k<=mesh->ntet; k++) {
-	  pt1 = &mesh->tetra[k];
-	  if ( !pt1->v[0] )  continue;
-	  c1 = &mesh->point[pt1->v[0]].c[0];
-	  c2 = &mesh->point[pt1->v[1]].c[0];
-	  c3 = &mesh->point[pt1->v[2]].c[0];
-	  c4 = &mesh->point[pt1->v[3]].c[0];
-	  volf += volTet(c1,c2,c3,c4);
-	}
-	fprintf(stdout,"  Volume: initial %E    final %E\n",vold,volf);
+	  volf = 0.0;
+	  for (k=1; k<=mesh->ntet; k++) {
+	    pt1 = &mesh->tetra[k];
+	    if ( !pt1->v[0] )  continue;
+	    c1 = &mesh->point[pt1->v[0]].c[0];
+	    c2 = &mesh->point[pt1->v[1]].c[0];
+	    c3 = &mesh->point[pt1->v[2]].c[0];
+	    c4 = &mesh->point[pt1->v[3]].c[0];
+	    volf += volTet(c1,c2,c3,c4);
+	  }
+	  fprintf(stdout,"  Volume: initial %E    final %E\n",vold,volf);
   }
 }
 
@@ -138,7 +138,6 @@ void meshBox(pMesh mesh,int bb) {
 
 
 int meshSurf(pMesh mesh) {
-  fprintf(stderr,"****meshSurf****\n");
   pTetra     ptt,pt2;
   pHexa      ph;
   pTriangle  pt;
@@ -204,7 +203,7 @@ int meshSurf(pMesh mesh) {
             pt->v[0] = ptt->v[i1];
             pt->v[1] = ptt->v[i2];
             pt->v[2] = ptt->v[i3];
-	        pt->ref  = MEDIT_MAX(ptt->ref,pt2->ref);
+	        pt->ref  = max(ptt->ref,pt2->ref);
 	  } 
 	}
       }	
@@ -295,12 +294,12 @@ void meshRef(pScene sc,pMesh mesh) {
     pm = &sc->material[nmat];
     for (i=0; i<3; i++) {
       ppt = &mesh->point[pt->v[i]];
-      pm->ext[0] = MEDIT_MIN(pm->ext[0],ppt->c[0]);
-      pm->ext[1] = MEDIT_MIN(pm->ext[1],ppt->c[1]);
-      pm->ext[2] = MEDIT_MIN(pm->ext[2],ppt->c[2]);
-      pm->ext[3] = MEDIT_MAX(pm->ext[3],ppt->c[0]);
-      pm->ext[4] = MEDIT_MAX(pm->ext[4],ppt->c[1]);
-      pm->ext[5] = MEDIT_MAX(pm->ext[5],ppt->c[2]);
+      pm->ext[0] = min(pm->ext[0],ppt->c[0]);
+      pm->ext[1] = min(pm->ext[1],ppt->c[1]);
+      pm->ext[2] = min(pm->ext[2],ppt->c[2]);
+      pm->ext[3] = max(pm->ext[3],ppt->c[0]);
+      pm->ext[4] = max(pm->ext[4],ppt->c[1]);
+      pm->ext[5] = max(pm->ext[5],ppt->c[2]);
     }
   }
 
@@ -320,12 +319,12 @@ void meshRef(pScene sc,pMesh mesh) {
     pm = &sc->material[nmat];
     for (i=0; i<4; i++) {
       ppt = &mesh->point[pq->v[i]];
-      pm->ext[0] = MEDIT_MIN(pm->ext[0],ppt->c[0]);
-      pm->ext[1] = MEDIT_MIN(pm->ext[1],ppt->c[1]);
-      pm->ext[2] = MEDIT_MIN(pm->ext[2],ppt->c[2]);
-      pm->ext[3] = MEDIT_MAX(pm->ext[3],ppt->c[0]);
-      pm->ext[4] = MEDIT_MAX(pm->ext[4],ppt->c[1]);
-      pm->ext[5] = MEDIT_MAX(pm->ext[5],ppt->c[2]);
+      pm->ext[0] = min(pm->ext[0],ppt->c[0]);
+      pm->ext[1] = min(pm->ext[1],ppt->c[1]);
+      pm->ext[2] = min(pm->ext[2],ppt->c[2]);
+      pm->ext[3] = max(pm->ext[3],ppt->c[0]);
+      pm->ext[4] = max(pm->ext[4],ppt->c[1]);
+      pm->ext[5] = max(pm->ext[5],ppt->c[2]);
     }
   }
 
@@ -345,12 +344,12 @@ void meshRef(pScene sc,pMesh mesh) {
     pm = &sc->material[nmat];
     for (i=0; i<4; i++) {
       ppt = &mesh->point[pte->v[i]];
-      pm->ext[0] = MEDIT_MIN(pm->ext[0],ppt->c[0]);
-      pm->ext[1] = MEDIT_MIN(pm->ext[1],ppt->c[1]);
-      pm->ext[2] = MEDIT_MIN(pm->ext[2],ppt->c[2]);
-      pm->ext[3] = MEDIT_MAX(pm->ext[3],ppt->c[0]);
-      pm->ext[4] = MEDIT_MAX(pm->ext[4],ppt->c[1]);
-      pm->ext[5] = MEDIT_MAX(pm->ext[5],ppt->c[2]);
+      pm->ext[0] = min(pm->ext[0],ppt->c[0]);
+      pm->ext[1] = min(pm->ext[1],ppt->c[1]);
+      pm->ext[2] = min(pm->ext[2],ppt->c[2]);
+      pm->ext[3] = max(pm->ext[3],ppt->c[0]);
+      pm->ext[4] = max(pm->ext[4],ppt->c[1]);
+      pm->ext[5] = max(pm->ext[5],ppt->c[2]);
     }
   }
 
@@ -369,12 +368,12 @@ void meshRef(pScene sc,pMesh mesh) {
     pm = &sc->material[nmat];
     for (i=0; i<8; i++) {
       ppt = &mesh->point[ph->v[i]];
-      pm->ext[0] = MEDIT_MIN(pm->ext[0],ppt->c[0]);
-      pm->ext[1] = MEDIT_MIN(pm->ext[1],ppt->c[1]);
-      pm->ext[2] = MEDIT_MIN(pm->ext[2],ppt->c[2]);
-      pm->ext[3] = MEDIT_MAX(pm->ext[3],ppt->c[0]);
-      pm->ext[4] = MEDIT_MAX(pm->ext[4],ppt->c[1]);
-      pm->ext[5] = MEDIT_MAX(pm->ext[5],ppt->c[2]);
+      pm->ext[0] = min(pm->ext[0],ppt->c[0]);
+      pm->ext[1] = min(pm->ext[1],ppt->c[1]);
+      pm->ext[2] = min(pm->ext[2],ppt->c[2]);
+      pm->ext[3] = max(pm->ext[3],ppt->c[0]);
+      pm->ext[4] = max(pm->ext[4],ppt->c[1]);
+      pm->ext[5] = max(pm->ext[5],ppt->c[2]);
     }
   }
   for (m=0;m<sc->par.nbmat; m++) {

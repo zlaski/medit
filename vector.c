@@ -17,11 +17,11 @@ void drawVector3D(float p[3],double u[3],double scale) {
 
   if ( fabs(u[0]) > EPS ) {
     m[3] = -(u[1]+u[2]) / u[0];
-    m[4] = m[5] = 1.0f;
+    m[4] = m[5] = 1.0;
   }
   else if ( fabs(u[1]) > EPS ) {
     m[4] = -(u[0]+u[2]) / u[1];
-    m[3] = m[5] = 1.0f;
+    m[3] = m[5] = 1.0;
   }
   else {
     m[5] = -(u[0]+u[1]) / u[2];

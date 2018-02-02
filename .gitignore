@@ -41,3 +41,12 @@ medit
 libmesh/libmesh.a
 rebar.rbr
 compil.date
+
+*.pdb
+*.tlog
+*.lastbuildstate
+*.ilk
+*.idb
+*.log
+*.db
+*.opendb

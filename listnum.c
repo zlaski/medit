@@ -91,7 +91,7 @@ void listNum(pScene sc,pMesh mesh) {
 
     for (k=1; k<=mesh->np; k++) {
       ppt = &mesh->point[k];
-      if ( ppt->tag == M_UNUSED ) continue;
+      if ( mesh->ne && ppt->tag == M_UNUSED ) continue;
       if ( ppt->ref ) {
         m  = matRef(sc,ppt->ref);
         pm = &sc->material[m];

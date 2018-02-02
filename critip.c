@@ -13,7 +13,6 @@ typedef struct saddle {
 #define EPSD  1.e-14
 #define EPS3  1.e-03
 #define MAXPS 100
-#define HSIZ  0.001
 
 static int idir[5] = {0,1,2,0,1};
 

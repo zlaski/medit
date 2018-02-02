@@ -78,8 +78,6 @@ pPersp initPersp(pPersp p,float dmax) {
 }
 
 
-#ifndef IGL
 #ifdef __cplusplus
 }
-#endif
 #endif

@@ -64,6 +64,7 @@ void M_memDump() {
     fprintf(stdout,"  %10d bytes   %d pointers\n",(int)size,c);
 }
 
+
 /* Returns allocated memory space in bytes */
 size_t M_memSize() {
   size_t size;
@@ -75,6 +76,7 @@ size_t M_memSize() {
       size += mstack[i].size;
   return size;
 }
+
 
 /* Allocates space for a block of at least size bytes,
    but does not initialize the space. */
@@ -205,7 +207,7 @@ void M_free(void *ptr) {
       mstack[i].ptr  = 0;
       mstack[i].size = 0;
       mstack[i].nxt  = cur;
-      mstack[i].call[0]  = '\0';
+      mstack[i].call[0] = '\0';
       cur = i;
 #ifdef MEMDEBUG
       fprintf(stdout,"M_free: deallocate %p of size %d       (%d,%d)\n",
@@ -228,12 +230,12 @@ void primem(int np) {
   if ( memsize ) {
     fprintf(stdout,"\n  -- MEMORY REQUIREMENTS\n");
     if (memsize > 1024*1024)
-      fprintf(stdout,"  Total size :  %10Zd Mbytes",
+      fprintf(stdout,"  Total size :  %10ld Mbytes",
 	      (long int)(memsize/(1024.*1024.)));
     else if (memsize > 1024)
-      fprintf(stdout,"  Total size :  %10Zd Kbytes",(long int)(memsize/1024.));
+      fprintf(stdout,"  Total size :  %10ld Kbytes",(long int)(memsize/1024.));
     else
-      fprintf(stdout,"  Total size :  %10Zd bytes ",(long int)memsize);
+      fprintf(stdout,"  Total size :  %10ld bytes ",(long int)memsize);
     fprintf(stdout,"    (i.e. %d bytes/point)\n",memsize / np);
   }
 }

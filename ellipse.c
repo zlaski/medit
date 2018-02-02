@@ -40,6 +40,9 @@ void drawEllipsoid(pScene sc,pMesh mesh,int typel,int k) {
 
     iord = eigenv(1,m,lambda,v);
     if ( !iord )  return;
+		lambda[0] = fabs(lambda[0]);
+		lambda[1] = fabs(lambda[1]);
+		lambda[2] = fabs(lambda[2]);
 
     if ( mesh->ne ) {    
       fprintf(stdout,"  Eigenvectors :\n   vp1 : %f  %f  %f\n",
@@ -48,17 +51,12 @@ void drawEllipsoid(pScene sc,pMesh mesh,int typel,int k) {
       fprintf(stdout,"   vp3 : %f  %f  %f\n",v[2][0],v[2][1],v[2][2]);
       fprintf(stdout,"  Eigenvalues  : %f  %f  %f    %d\n",
               lambda[0],lambda[1],lambda[2],iord);
-      if ( lambda[0] <= 0.0 || lambda[1] <= 0.0 || lambda[2] <= 0.0)
-        return;
       fprintf(stdout,"  Sizes        : %f  %f  %f\n",
               1.0/sqrt(lambda[0]),1.0/sqrt(lambda[1]),1.0/sqrt(lambda[2]));
     }
-    else if ( lambda[0] <= 0.0 || lambda[1] <= 0.0 || lambda[2] <= 0.0)
-      return;
-
-    lambda[0] = MEDIT_MAX(EPS,0.5/sqrt(lambda[0]));
-    lambda[1] = MEDIT_MAX(EPS,0.5/sqrt(lambda[1]));
-    lambda[2] = MEDIT_MAX(EPS,0.5/sqrt(lambda[2]));
+    lambda[0] = max(EPS,0.5/sqrt(lambda[0]));
+    lambda[1] = max(EPS,0.5/sqrt(lambda[1]));
+    lambda[2] = max(EPS,0.5/sqrt(lambda[2]));
     memcpy(mat,IdMatrix,16*sizeof(GLfloat));
     for (j=0; j<3; j++) 
       for (l=0; l<3; l++)
@@ -99,9 +97,9 @@ void drawEllipsoid(pScene sc,pMesh mesh,int typel,int k) {
     for (j=0; j<6; j++)  m[j] /= 6.;
 
     if ( !eigenv(1,m,lambda,v) )  return;
-    lambda[0] = MEDIT_MAX(EPS,0.5/sqrt(lambda[0]));
-    lambda[1] = MEDIT_MAX(EPS,0.5/sqrt(lambda[1]));
-    lambda[2] = MEDIT_MAX(EPS,0.5/sqrt(lambda[2]));
+    lambda[0] = max(EPS,0.5/sqrt(lambda[0]));
+    lambda[1] = max(EPS,0.5/sqrt(lambda[1]));
+    lambda[2] = max(EPS,0.5/sqrt(lambda[2]));
 
     memcpy(mat,IdMatrix,16*sizeof(GLfloat));
     for (j=0; j<3; j++) 
@@ -143,9 +141,9 @@ void drawEllipsoid(pScene sc,pMesh mesh,int typel,int k) {
     for (j=0; j<6; j++)  m[j] /= 6.;
 
     if ( !eigenv(1,m,lambda,v) )  return;
-    lambda[0] = MEDIT_MAX(EPS,0.5/sqrt(lambda[0]));
-    lambda[1] = MEDIT_MAX(EPS,0.5/sqrt(lambda[1]));
-    lambda[2] = MEDIT_MAX(EPS,0.5/sqrt(lambda[2]));
+    lambda[0] = max(EPS,0.5/sqrt(lambda[0]));
+    lambda[1] = max(EPS,0.5/sqrt(lambda[1]));
+    lambda[2] = max(EPS,0.5/sqrt(lambda[2]));
 
     memcpy(mat,IdMatrix,16*sizeof(GLfloat));
     for (j=0; j<3; j++) 
@@ -280,7 +278,7 @@ GLuint drawAllEllipse(pScene sc,pMesh mesh) {
       m[0] = ps->m[0];
       m[1] = ps->m[1];
       m[2] = ps->m[2];
-      if ( !eigen2(m,lambda,vp) ) return (0) ;
+      if ( !eigen2(m,lambda,vp) ) return;
 
       /* consider eigenvalues as sizes */
       dd1 = 1.0 / sqrt(fabs(lambda[0]));
@@ -308,7 +306,7 @@ GLuint drawAllEllipse(pScene sc,pMesh mesh) {
       m[0] = ps->m[0];
       m[1] = ps->m[1];
       m[2] = ps->m[2];
-      if ( !eigen2(m,lambda,vp) ) return (0) ;
+      if ( !eigen2(m,lambda,vp) ) return;
 
       /* consider eigenvalues as sizes */
       dd1 = 1.0 / sqrt(fabs(lambda[0]));

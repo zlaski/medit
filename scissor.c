@@ -66,7 +66,7 @@ void scissorScene() {
   /* draw top left : top view */
   glViewport(0,height,width,height);
   glScissor(0,height,width,height);
-  farclip(1);  
+  farclip(1);
 
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();

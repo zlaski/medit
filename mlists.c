@@ -7,95 +7,13 @@ static int ct[4][3] = { {0,1,2}, {0,3,1}, {1,3,2}, {0,2,3} };
 static int ch[6][4] = { {0,1,2,3}, {4,5,6,7}, {0,1,5,4}, 
             {1,2,6,5}, {2,3,7,6}, {0,3,7,4} };
 
-#ifdef IGL
-#include <igl/jet.h>
-#include <igl/parula.h>
-#include <igl/rgb_to_hsv.h>
-void IGLParams::rgb(double x, double * rgb)
-{
-
-  double hsv[3];
-  igl::rgb_to_hsv(this->easter_red,hsv);
-  //hsv[0] = 0;
-  //hsv[1] = this->easter_s;
-  //hsv[2] = this->easter_v;
-  switch(color_map)
-  {
-    case COLOR_MAP_PARULA:
-      igl::parula(x,rgb);
-      return;
-    case COLOR_MAP_JET:
-      igl::jet(x,rgb);
-      return;
-    case COLOR_MAP_EASTER:
-    {
-      hsv[0] = x*360;
-      hsvrgb(hsv,rgb);
-      return;
-    }
-    case COLOR_MAP_WINDING_THEN_EASTER:
-    {
-      if(x == 0)
-      {
-        rgb[0] = 1;
-        rgb[1] = 0;
-        rgb[2] = 0;
-      }else
-      {
-        hsv[0] = x*360;
-        hsvrgb(hsv,rgb);
-      }
-      return;
-    }
-    case COLOR_MAP_DEFAULT:
-    default:
-    {
-      double def[3] = { 0.0, 1.0, 0.80 };
-      def[0] = 240.0-x*240.0;
-      hsvrgb(def,rgb);
-      return;
-    }
-  }
-}
-#endif
-
-#ifdef IGL
-double filter(pScene sc, double ss)
-{
-  double s = ss;
-  if(sc->igl_params->fade_flip)
-  {
-    s = 1.0-s;
-  }
-  const double & max_s = sc->igl_params->fade_max_s;
-  const double & min_s = sc->igl_params->fade_min_s;
-  const double & max_v = sc->igl_params->fade_max_v;
-  const double & min_v = sc->igl_params->fade_min_v;
-  if(s>max_s)
-  {
-    return max_v;
-  }else if(s<=min_s)
-  {
-    return min_v;
-  }else
-  {
-    double f = (s-min_s)/(max_s-min_s);
-    f = -2*f*f*f+3*f*f;
-    return f*(max_v-min_v)+min_v;
-  }
-}
-#endif
 
 /* recursively subdivide a triangle */
 void cutTriangle(pScene sc,triangle t) {
   triangle      t1,t2;
   double        kc,x,dd,rgb[4],maxe;
   int           i,ia,ib,ic,iedge;
-  // Alec: hard coded pallete
-  static double hsv[3] = { 0.0, 1.0, 0.80 };
-#ifdef IGL
-  rgb[3] = sc->igl_params->alpha_holder;
-#endif
+  static double hsv[3] = { 0.0, 1.0, 0.8 };
 
   /* analyze triangle edges */
   if ( t.va < sc->iso.val[0] )  
@@ -193,18 +111,13 @@ void cutTriangle(pScene sc,triangle t) {
   else if ( t.va > sc->iso.val[MAXISO-1] )
     t.va = sc->iso.val[MAXISO-1];
   kc = (t.va-sc->iso.val[ia-1]) / (sc->iso.val[ia] - sc->iso.val[ia-1]);
-#ifdef IGL
-  {
-    double s = 1.0-(sc->iso.col[ia-1]*(1.0-kc)+sc->iso.col[ia]*kc)/240.0;
-    // Alpha mess
-    //rgb[3] = filter(sc,s)*sc->igl_params->alpha_holder;
-    sc->igl_params->rgb(s,rgb);
-  }
-#else
-  hsv[0] = sc->iso.col[ia-1]*(1.0-kc)+sc->iso.col[ia]*kc;
-  hsvrgb(hsv,rgb);
-#endif
 
+  if (sc->iso.palette < 5 ) {
+    hsv[0] = sc->iso.col[ia-1]*(1.0-kc)+sc->iso.col[ia]*kc;
+    hsvrgb(hsv,rgb);
+  }
+  else
+    rgb[0] = rgb[1] = rgb[2] = sc->iso.col[ia-1]*(1.0-kc)+sc->iso.col[ia]*kc;
   glColor4dv(rgb);
   glNormal3fv(t.na);
   glVertex3fv(t.a);
@@ -214,18 +127,12 @@ void cutTriangle(pScene sc,triangle t) {
   else if ( t.vb > sc->iso.val[MAXISO-1] )
     t.vb = sc->iso.val[MAXISO-1];
   kc = (t.vb-sc->iso.val[ib-1]) / (sc->iso.val[ib] - sc->iso.val[ib-1]);
-#ifdef IGL
-  {
-    double s  = 1.0-(sc->iso.col[ib-1]*(1.0-kc)+sc->iso.col[ib]*kc)/240.0;
-    // Alpha mess
-    //rgb[3] = filter(sc,s)*sc->igl_params->alpha_holder;
-    sc->igl_params->rgb( s,rgb);
+  if (sc->iso.palette < 5 ) {
+    hsv[0] = sc->iso.col[ib-1]*(1.0-kc)+sc->iso.col[ib]*kc;
+    hsvrgb(hsv,rgb);
   }
-#else
-  hsv[0] = sc->iso.col[ib-1]*(1.0-kc)+sc->iso.col[ib]*kc;
-  hsvrgb(hsv,rgb);
-#endif
-
+  else
+    rgb[0] = rgb[1] = rgb[2] = sc->iso.col[ib-1]*(1.0-kc)+sc->iso.col[ib]*kc;
   glColor4dv(rgb);
   glNormal3fv(t.nb);
   glVertex3fv(t.b);
@@ -235,17 +142,12 @@ void cutTriangle(pScene sc,triangle t) {
   else if ( t.vc > sc->iso.val[MAXISO-1] )
     t.vc = sc->iso.val[MAXISO-1];
   kc = (t.vc-sc->iso.val[ic-1]) / (sc->iso.val[ic] - sc->iso.val[ic-1]);
-#ifdef IGL
-  {
-    double s = 1.0-(sc->iso.col[ic-1]*(1.0-kc)+sc->iso.col[ic]*kc)/240.0;
-    // Alpha mess
-    // rgb[3] = filter(sc,s)*sc->igl_params->alpha_holder;
-    sc->igl_params->rgb( s,rgb);
+  if ( sc->iso.palette < 5 ) {
+    hsv[0] = sc->iso.col[ic-1]*(1.0-kc)+sc->iso.col[ic]*kc;
+    hsvrgb(hsv,rgb);
   }
-#else
-  hsv[0] = sc->iso.col[ic-1]*(1.0-kc)+sc->iso.col[ic]*kc;
-  hsvrgb(hsv,rgb);
-#endif
+  else
+    rgb[0] = rgb[1] = rgb[2] = sc->iso.col[ic-1]*(1.0-kc)+sc->iso.col[ic]*kc;
 
   glColor4dv(rgb);
   glNormal3fv(t.nc);
@@ -275,21 +177,6 @@ GLuint listTriaMap(pScene sc,pMesh mesh) {
   dlist = glGenLists(1);
   glNewList(dlist,GL_COMPILE);
   if ( glGetError() )  return(0);
-#ifdef IGL
-  bool transp = sc->material->dif[3] < 0.999;
-  int old_depth_func =0;
-  glGetIntegerv(GL_DEPTH_FUNC,&old_depth_func);
-  if ( transp )
-  {
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-    glDepthFunc(GL_ALWAYS);
-    sc->igl_params->alpha_holder = sc->material->dif[3];
-  }else
-  {
-    sc->igl_params->alpha_holder = 1.0;
-  }
-#endif
 
   /* build list */
   for (m=0; m<sc->par.nbmat; m++) {
@@ -367,27 +254,7 @@ GLuint listTriaMap(pScene sc,pMesh mesh) {
           ps0 = &mesh->sol[k];
           t.va = t.vb = t.vc = ps0->bb;
         }
-#ifdef IGL
-        if(pt->ref == 1)
-        {
-          // Self-intersection
-          float red[4] = {1.0, 0.0, 0.0, 1.0};
-          red[3] = sc->material->dif[3];
-          glColor4fv(red);
-          glNormal3fv(n);
-          glVertex3fv(t.a);
-          glColor4fv(red);
-          glNormal3fv(n);
-          glVertex3fv(t.b);
-          glColor4fv(red);
-          glNormal3fv(n);
-          glVertex3fv(t.c);
-        }else{
-#endif
         cutTriangle(sc,t);
-#ifdef IGL
-        }
-#endif
         k = pt->nxt;
       }
       glEnd();
@@ -415,11 +282,11 @@ GLuint listTriaMap(pScene sc,pMesh mesh) {
         n[1] = az*bx - ax*bz;
         n[2] = ax*by - ay*bx;
         dd = n[0]*n[0] + n[1]*n[1] + n[2]*n[2];
-        if ( dd > 0.0f ) {
-      dd = 1.0f / sqrt(dd);
-      n[0] *= dd;
-      n[1] *= dd;
-      n[2] *= dd;
+        if ( dd > 0.0 ) {
+          dd = 1.0f / sqrt(dd);
+          n[0] *= dd;
+          n[1] *= dd;
+          n[2] *= dd;
         }
 
         is0 = is1 = is2 = 0;
@@ -485,16 +352,16 @@ GLuint listTriaMap(pScene sc,pMesh mesh) {
           t.nc[2] = mesh->extra->n[3*(is2-1)+3];
         }
         if ( mesh->typage == 2 ) {
-      ps0  = &mesh->sol[pt->v[0]];
-      ps1  = &mesh->sol[pt->v[1]];
-      ps2  = &mesh->sol[pt->v[2]];
-      t.va = ps0->bb;
-      t.vb = ps1->bb;
-      t.vc = ps2->bb;
+          ps0  = &mesh->sol[pt->v[0]];
+          ps1  = &mesh->sol[pt->v[1]];
+          ps2  = &mesh->sol[pt->v[2]];
+          t.va = ps0->bb;
+          t.vb = ps1->bb;
+          t.vc = ps2->bb;
         }
         else {
-      ps0 = &mesh->sol[k];
-      t.va = t.vb = t.vc = ps0->bb;
+          ps0 = &mesh->sol[k];
+          t.va = t.vb = t.vc = ps0->bb;
         }
         cutTriangle(sc,t);
         k = pt->nxt;
@@ -502,13 +369,6 @@ GLuint listTriaMap(pScene sc,pMesh mesh) {
       glEnd();
     }
   }
-#ifdef IGL
-  if(transp)
-  {
-    glDepthFunc(old_depth_func);
-    glDisable(GL_BLEND);
-  }
-#endif
 
   glEndList();
   return(dlist);
@@ -715,29 +575,11 @@ GLuint listTetraMap(pScene sc,pMesh mesh,ubyte clip) {
   if ( ddebug ) printf("create display list map / TETRA\n");
   if ( egal(sc->iso.val[0],sc->iso.val[MAXISO-1]) )  return(0);
 
-  // By Leo: get number of triangles to render tet colors correctly
-  int boundary_faces = mesh->nt;
-
   /* build display list */
   dlist = glGenLists(1);
   glNewList(dlist,GL_COMPILE);
   if ( glGetError() )  return(0);
-#ifdef IGL
-  bool transp = sc->igl_params->tet_color[3] < 0.999;
-  int old_depth_func =0;
-  glGetIntegerv(GL_DEPTH_FUNC,&old_depth_func);
-  if ( transp )
-  {
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-    glDepthFunc(GL_ALWAYS);
-    sc->igl_params->alpha_holder = sc->igl_params->tet_color[3];
-  }else
-  {
-    sc->igl_params->alpha_holder = 1.0;
-  }
-#endif
-
+  
   /* build list */
   for (m=0; m<sc->par.nbmat; m++) {
     pm = &sc->material[m];
@@ -752,10 +594,10 @@ GLuint listTetraMap(pScene sc,pMesh mesh,ubyte clip) {
         continue;
       }
       /* build 4 faces */
-      cx = cy = cz = 0.0f;
+      cx = cy = cz = 0.0;
       for (l=0; l<4; l++) {
-    p0  = &mesh->point[pt->v[l]];
-    cx += p0->c[0];
+        p0  = &mesh->point[pt->v[l]];
+        cx += p0->c[0];
         cy += p0->c[1];
         cz += p0->c[2];
       }
@@ -764,23 +606,23 @@ GLuint listTetraMap(pScene sc,pMesh mesh,ubyte clip) {
       cz /= 4.;
 
       for (l=0; l<4; l++) {
-    p0 = &mesh->point[pt->v[ct[l][0]]];
-    p1 = &mesh->point[pt->v[ct[l][1]]];
-    p2 = &mesh->point[pt->v[ct[l][2]]];
+        p0 = &mesh->point[pt->v[ct[l][0]]];
+        p1 = &mesh->point[pt->v[ct[l][1]]];
+        p2 = &mesh->point[pt->v[ct[l][2]]];
 
         /* compute face normal */
-    ax = p1->c[0] - p0->c[0]; ay = p1->c[1] - p0->c[1]; az = p1->c[2] - p0->c[2];
-    bx = p2->c[0] - p0->c[0]; by = p2->c[1] - p0->c[1]; bz = p2->c[2] - p0->c[2];
-    n[0] = ay*bz - az*by;
-    n[1] = az*bx - ax*bz;
-    n[2] = ax*by - ay*bx;
-    d = n[0]*n[0] + n[1]*n[1] + n[2]*n[2];
-    if ( d > 0.0f ) {
-      d = 1.0f / sqrt(d);
-      n[0] *= d;  
+        ax = p1->c[0] - p0->c[0]; ay = p1->c[1] - p0->c[1]; az = p1->c[2] - p0->c[2];
+        bx = p2->c[0] - p0->c[0]; by = p2->c[1] - p0->c[1]; bz = p2->c[2] - p0->c[2];
+        n[0] = ay*bz - az*by;
+        n[1] = az*bx - ax*bz;
+        n[2] = ax*by - ay*bx;
+        d = n[0]*n[0] + n[1]*n[1] + n[2]*n[2];
+        if ( d > 0.0 ) {
+          d = 1.0f / sqrt(d);
+          n[0] *= d;  
           n[1] *= d;  
           n[2] *= d;
-    }
+        }
 
         /* store triangle */
         t.a[0] = sc->shrink*(p0->c[0]-cx)+cx;
@@ -802,17 +644,17 @@ GLuint listTetraMap(pScene sc,pMesh mesh,ubyte clip) {
 
         if ( mesh->typage == 2 ) {
           /* solutions at vertices */
-      ps0 = &mesh->sol[pt->v[ct[l][0]]];
-      ps1 = &mesh->sol[pt->v[ct[l][1]]];
-      ps2 = &mesh->sol[pt->v[ct[l][2]]];
+          ps0 = &mesh->sol[pt->v[ct[l][0]]];
+          ps1 = &mesh->sol[pt->v[ct[l][1]]];
+          ps2 = &mesh->sol[pt->v[ct[l][2]]];
           t.va = ps0->bb;
-      t.vb = ps1->bb;
-      t.vc = ps2->bb;
+          t.vb = ps1->bb;
+          t.vc = ps2->bb;
         }
         else {
           /* solution at element */  
-          ps0 = &mesh->sol[k+boundary_faces];
-      t.va = t.vb = t.vc = ps0->bb;
+          ps0 = &mesh->sol[k];
+          t.va = t.vb = t.vc = ps0->bb;
         }
         /* color interpolation */
         cutTriangle(sc,t);
@@ -821,13 +663,6 @@ GLuint listTetraMap(pScene sc,pMesh mesh,ubyte clip) {
     }
     glEnd();
   }
-#ifdef IGL
-  if(transp)
-  {
-    glDepthFunc(old_depth_func);
-    glDisable(GL_BLEND);
-  }
-#endif
 
   glEndList();
   return(dlist);
@@ -1309,9 +1144,14 @@ void setupPalette(pScene sc,pMesh mesh) {
     }
     sc->iso.palette = 1;
   }
-  else {
+  else if ( sc->iso.palette < 5 ) {
     for (i=0; i<MAXISO; i++)
       sc->iso.col[i] = 240.0 *(1.0 - (float)i/(MAXISO-1));
+  }
+  else {
+    for (i=0; i<MAXISO; i++) {
+      sc->iso.col[i] = ((float)i/(MAXISO-1.0));
+    }
   }
 }
 
@@ -1321,10 +1161,11 @@ GLuint drawPalette(pScene sc) {
   double     rgb[3];
   float      xpos,ypos,inc,top,bottom,left,right;
   int        i;
-  static double hsv[3] = {1.0, 1.0, 0.80};
+  static double hsv[3] = {1.0, 1.0, 0.9};
 
+	if ( ddebug )  printf("   palette %d\n",sc->iso.palette);
   if ( sc->iso.palette < 3 ) {
-    if ( sc->iso.palette <= 2 ) {
+    if ( sc->iso.palette < 2 ) {
       top     = sc->par.ys - 20;
       bottom  = top - 10;
       left    = sc->par.xs / 10;
@@ -1342,22 +1183,14 @@ GLuint drawPalette(pScene sc) {
     glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
     glBegin(GL_QUADS);
     for (i=1; i<MAXISO; i++) {
-#ifdef IGL
-    sc->igl_params->rgb( 1.0-(sc->iso.col[i-1])/240.0,rgb);
-#else
       hsv[0] = sc->iso.col[i-1];
       hsvrgb(hsv,rgb);
-#endif
       glColor3dv(rgb);
       glVertex2f(xpos,bottom);
       glVertex2f(xpos,top);
 
-#ifdef IGL
-    sc->igl_params->rgb( 1.0-(sc->iso.col[i])/240.0,rgb);
-#else
       hsv[0] = sc->iso.col[i];
       hsvrgb(hsv,rgb);
-#endif
       glColor3dv(rgb);
       glVertex2f(xpos+inc,top);
       glVertex2f(xpos+inc,bottom);
@@ -1407,22 +1240,14 @@ GLuint drawPalette(pScene sc) {
     glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
     glBegin(GL_QUADS);
     for (i=1; i<MAXISO; i++) {
-#ifdef IGL
-    sc->igl_params->rgb( 1.0-(sc->iso.col[i-1])/240.0,rgb);
-#else
       hsv[0] = sc->iso.col[i-1];
       hsvrgb(hsv,rgb);
-#endif
       glColor3dv(rgb);
       glVertex2f(left,ypos);
       glVertex2f(right,ypos);
 
-#ifdef IGL
-      sc->igl_params->rgb( 1.0-(sc->iso.col[i])/240.0,rgb);
-#else
       hsv[0] = sc->iso.col[i];
       hsvrgb(hsv,rgb);
-#endif
       glColor3dv(rgb);
       glVertex2f(right,ypos+inc);
       glVertex2f(left,ypos+inc);
@@ -1450,7 +1275,7 @@ GLuint drawPalette(pScene sc) {
     output2(right,top,"%.4E",sc->iso.val[MAXISO-1]);
   }
 
-  else {
+  else if (sc->iso.palette == 4 ) {
     bottom  = sc->par.ys / 10;
     top     = sc->par.ys - bottom;
     right   = sc->par.xs - 10;
@@ -1461,22 +1286,14 @@ GLuint drawPalette(pScene sc) {
     glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
     glBegin(GL_QUADS);
     for (i=1; i<MAXISO; i++) {
-#ifdef IGL
-      sc->igl_params->rgb( 1.0-(sc->iso.col[i-1])/240.0,rgb);
-#else
       hsv[0] = sc->iso.col[i-1];
       hsvrgb(hsv,rgb);
-#endif
       glColor3dv(rgb);
       glVertex2f(left,ypos);
       glVertex2f(right,ypos);
 
-#ifdef IGL
-      sc->igl_params->rgb( 1.0-(sc->iso.col[i])/240.0,rgb);
-#else
       hsv[0] = sc->iso.col[i];
       hsvrgb(hsv,rgb);
-#endif
       glColor3dv(rgb);
       glVertex2f(right,ypos+inc);
       glVertex2f(left,ypos+inc);
@@ -1503,6 +1320,65 @@ GLuint drawPalette(pScene sc) {
     }
     output2(left,top,"%.4E",sc->iso.val[MAXISO-1]);
   }
+
+  /* black and white */
+  else if ( sc->iso.palette == 5 ) {
+    top     = sc->par.ys - 20;
+    bottom  = top - 10;
+    left    = sc->par.xs / 10;
+    right   = sc->par.xs - left;
+
+    inc  = (sc->par.xs-2*left) / (MAXISO-1);
+    xpos = left;
+    glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+    glBegin(GL_QUADS);
+    for (i=1; i<MAXISO; i++) {
+      rgb[0] = rgb[1] = rgb[2] = sc->iso.col[i-1];
+      glColor3dv(rgb);
+      glVertex2f(xpos,bottom);
+      glVertex2f(xpos,top);
+
+      rgb[0] = rgb[1] = rgb[2] = sc->iso.col[i];
+      glColor3dv(rgb);
+      glVertex2f(xpos+inc,top);
+      glVertex2f(xpos+inc,bottom);
+      xpos += inc;
+    }
+    glEnd();
+
+    glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
+    glLineWidth(1.0);
+    glColor3fv(sc->par.line);
+    glRectf(left,bottom,xpos,top);
+
+    /* graduate  */
+    xpos = left / 2;
+    bottom -= 10;
+    top    += 5;
+    output2(xpos,bottom,"%.4E",sc->iso.val[0]);
+    xpos = left;
+    for (i=1; i<MAXISO-1; i++) {
+      xpos += inc;
+      if ( (i % 2) == 0 ) {
+        output2(xpos-25.0,bottom,"%.4E",sc->iso.val[i]);
+        glBegin(GL_LINES);
+          glVertex2f(xpos,bottom+15);
+          glVertex2f(xpos,bottom+10);
+        glEnd();
+      }
+      else {
+        output2(xpos-25.0,top,"%.4E",sc->iso.val[i]);
+        glBegin(GL_LINES);
+          glVertex2f(xpos,top-10);
+          glVertex2f(xpos,top-5);
+        glEnd();
+      }
+    }
+    output2(right-left/2,bottom,"%.4E",sc->iso.val[MAXISO-1]);
+  }
+
+	else
+	  return(0);
 
   return(1);
 }

@@ -336,19 +336,11 @@ void keyScene(unsigned char key,int x,int y) {
   int         k,keyact,numit,idw = currentScene();
   ubyte       post = FALSE,dolist = FALSE;
 
-
   if ( idw < 0 ) exit(0);
 
   /* ESC = end medit */
   if ( key == 'q' || key == 27 ) 
-#ifdef IGL
-  {
-    deleteScene(cv.scene[idw]);
     exit(0);
-  }
-#else
-    exit(0);
-#endif
   else if ( key == 'h' || key == '?' )
     usage();
 
@@ -358,20 +350,6 @@ void keyScene(unsigned char key,int x,int y) {
   clip = sc->clip;
   cube = sc->cube;
   p    = sc->persp;
-
-#ifdef IGL
-  // Tweakbar has precedence over everything else
-  if(TwEventKeyboardGLUT(key,x,y))
-  {
-    dolist = TRUE;
-    post = TRUE;
-    goto keySceneFinish;
-  }
-
-  // Hack so that '=/+' acts like zoom in/out
-  key = (key == '+' || key == '=' ? 'z' : key);
-  key = (key == '-' || key == '_' ? 'Z' : key);
-#endif
 
   keyact = glutGetModifiers();
   if ( key == ' ' ) {
@@ -452,6 +430,9 @@ void keyScene(unsigned char key,int x,int y) {
       if ( mesh->nbb )  keyMetric('m',0,0);
       keyMode('n',0,0);
       break;
+    case 'n':
+		  if ( mesh->nvn )  keyMode('n',0,0);
+		  break;
     case 'o': /* iso-lines */
       if ( mesh->nbb ) keyMetric('l',0,0);
       break;
@@ -551,7 +532,7 @@ void keyScene(unsigned char key,int x,int y) {
     if ( p->rubber == 2 )
       setPersp(sc,p,1);
         else 
-          p->fovy = MEDIT_MAX(0.9*p->fovy,1e-05);
+          p->fovy = max(0.9*p->fovy,1e-05);
         farclip(1);
       }
       post = TRUE;
@@ -663,14 +644,14 @@ void keyScene(unsigned char key,int x,int y) {
       /* linked view */
       sc1 = sc;
       while ( sc1->slave > -1 ) {
-    sc1 = cv.scene[sc1->slave];
+        sc1 = cv.scene[sc1->slave];
         sc1->cx = sc->cx;
         sc1->cy = sc->cy;
         sc1->cz = sc->cz;
         memcpy(sc1->view,sc->view,sizeof(struct transform));
         memcpy(sc1->persp,sc->persp,sizeof(struct sperspective));
-    glutSetWindow(sc1->idwin);
-    reshapeScene(sc1->par.xs,sc1->par.ys);
+        glutSetWindow(sc1->idwin);
+        reshapeScene(sc1->par.xs,sc1->par.ys);
       }
       glutSetWindow(sc->idwin);
       break;
@@ -684,10 +665,10 @@ void keyScene(unsigned char key,int x,int y) {
         break;
       }
       if ( idw != cv.nbs ) {
-    deleteScene(sc);
-    for (k=idw+1; k<cv.nbs; k++)
-      cv.scene[k-1] = cv.scene[k];
-    cv.scene[cv.nbs-1] = 0;
+        deleteScene(sc);
+        for (k=idw+1; k<cv.nbs; k++)
+          cv.scene[k-1] = cv.scene[k];
+        cv.scene[cv.nbs-1] = 0;
       }
       glutHideWindow();
       if ( --cv.nbs == 0 ) exit(0);
@@ -709,7 +690,7 @@ void keyScene(unsigned char key,int x,int y) {
         if ( p->rubber == 2 )
           setPersp(sc,p,0);
         else 
-          p->fovy = MEDIT_MIN(1.1*p->fovy,179.0);
+          p->fovy = min(1.1*p->fovy,179.0);
         farclip(1);
       }
       post = TRUE;
@@ -757,7 +738,7 @@ void keyScene(unsigned char key,int x,int y) {
       if ( p->rubber == 2 )
         setPersp(sc,p,0);
       else 
-        p->fovy = MEDIT_MIN(1.1*p->fovy,179.0);
+        p->fovy = min(1.1*p->fovy,179.0);
       farclip(1);
       post = TRUE;
       */
@@ -800,19 +781,19 @@ void keyScene(unsigned char key,int x,int y) {
       if ( p->rubber == 2 )
     setPersp(sc,p,1);
       else 
-      p->fovy = MEDIT_MAX(0.9*p->fovy,1e-05);
+      p->fovy = max(0.9*p->fovy,1e-05);
       farclip(1);
       post = TRUE;
 */      
       /* update linked view */
       sc1 = sc;
       while ( sc1->slave > -1 ) {
-    sc1 = cv.scene[sc1->slave];
+        sc1 = cv.scene[sc1->slave];
         memcpy(sc1->view,sc->view,sizeof(struct transform));
         memcpy(sc1->camera,sc->camera,sizeof(struct camera));
         memcpy(sc1->persp,sc->persp,sizeof(struct sperspective));
-    glutSetWindow(sc1->idwin);
-    reshapeScene(sc1->par.xs,sc1->par.ys);
+        glutSetWindow(sc1->idwin);
+        reshapeScene(sc1->par.xs,sc1->par.ys);
       }
       glutSetWindow(sc->idwin);
       break;
@@ -826,7 +807,6 @@ void keyScene(unsigned char key,int x,int y) {
       post = TRUE;
       break;
     case '!':  /* clip plane */
-    return;
       if ( !(clip->active & C_ON) )  return;
       dd = clip->eqn[3]-clip->eqn[0]*mesh->xtra \
          - clip->eqn[1]*mesh->ytra-clip->eqn[2]*mesh->ztra;
@@ -854,7 +834,7 @@ void keyScene(unsigned char key,int x,int y) {
       post   = TRUE;
       dolist = TRUE;
       break;
-    
+
     case '@': /* add trajectoire point */
       if ( p->pmode == CAMERA )
         pathAdd(sc,x,y);
@@ -872,9 +852,6 @@ void keyScene(unsigned char key,int x,int y) {
       break;
     }
   }
-#ifdef IGL
-keySceneFinish:
-#endif
   
   if ( dolist ) {
     doLists(sc,mesh);

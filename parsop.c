@@ -120,6 +120,7 @@ void iniopt(pScene sc,pMesh mesh) {
   sc->par.sunp  =  0;
   sc->par.linc  =  0;
   sc->par.linewidth = mesh->dim==3 ? 3 : 2;
+  sc->par.isowidth  = 1;
   sc->par.pointsize = 3.0;
 
   for (k=0; k<MAXISO; k++) {
@@ -134,8 +135,9 @@ void iniopt(pScene sc,pMesh mesh) {
   sc->par.coeff = 0.0;
   
   /* streamlines */
+	sc->par.timdep  = 0.0;
   sc->par.maxtime = FLT_MAX;
-  sc->par.dt      = FLT_MAX;
+  sc->par.dt      = 0.0;
   sc->par.nbpart  = 1;
 
   /* clip plane */
@@ -146,7 +148,7 @@ void iniopt(pScene sc,pMesh mesh) {
   sc->par.clip[3] = -1.0;
   sc->par.clip[4] =  0.0;
   sc->par.clip[5] =  0.0;
-  
+
   sc->par.eyesep  = -1.0;
 }
 
@@ -172,7 +174,7 @@ int parsop(pScene sc,pMesh mesh) {
     in = fopen(data,"r"); 
   }
   if ( !in ) {
-    sprintf(data,"%s",DEFAULT_FILE);
+    sprintf(data,"./%s",DEFAULT_FILE);
     in = fopen(data,"r");
     if ( !in ) {
       fprintf(stdout,"   Loading default options\n");
@@ -229,12 +231,16 @@ int parsop(pScene sc,pMesh mesh) {
     }
     else if ( !strcmp(key,"linewidth") ) {
       fscanf(in,"%f",&r);
-      sc->par.linewidth = MEDIT_MAX(1.0,MEDIT_MIN(10.0,r));
+      sc->par.linewidth = max(1.0,min(10.0,r));
       sc->par.linc = 1;
+    }
+    else if ( !strcmp(key,"isowidth") ) {
+      fscanf(in,"%f",&r);
+      sc->par.isowidth = max(1.0,min(10.0,r));
     }
     else if ( !strcmp(key,"pointsize") ) {
       fscanf(in,"%f",&r);
-      sc->par.pointsize = MEDIT_MAX(1.0,MEDIT_MIN(10.0,r));
+      sc->par.pointsize = max(1.0,min(10.0,r));
       sc->par.linc = 1;
     }
     else if ( !strcmp(key,"edgecolor") ) {
@@ -245,8 +251,8 @@ int parsop(pScene sc,pMesh mesh) {
     else if ( !strcmp(key,"sunposition") ) {
       fscanf(in,"%f %f %f",&r,&g,&b);
       sc->dmax = mesh->xmax - mesh->xmin;
-      sc->dmax = MEDIT_MAX(sc->dmax,mesh->ymax - mesh->ymin);
-      sc->dmax = MEDIT_MAX(sc->dmax,mesh->zmax - mesh->zmin);
+      sc->dmax = max(sc->dmax,mesh->ymax - mesh->ymin);
+      sc->dmax = max(sc->dmax,mesh->zmax - mesh->zmin);
       sc->dmax = fabs(sc->dmax);
       sc->par.sunpos[0] = 2.0*sc->dmax*r;  
       sc->par.sunpos[1] = 2.0*sc->dmax*g;
@@ -256,10 +262,6 @@ int parsop(pScene sc,pMesh mesh) {
     else if ( !strcmp(key,"windowsize") ) {
       fscanf(in,"%d %d",&xs,&ys);
       sc->par.xs = (short)xs;  sc->par.ys = (short)ys;
-    }
-    else if ( !strcmp(key,"windowposition") ) {
-      fscanf(in,"%d %d",&xs,&ys);
-      sc->par.pxs = (short)xs;  sc->par.pys = (short)ys;
     }
     else if ( !strcmp(key,"rendermode") ) {
       fscanf(in,"%s",buf);
@@ -285,6 +287,8 @@ int parsop(pScene sc,pMesh mesh) {
         sc->iso.palette = 3;
       else if ( !strcmp(key,"paletter") )
         sc->iso.palette = 4;
+      else if ( !strcmp(key,"palettenb") )
+        sc->iso.palette = 5;
 
       for (k=0; k<MAXISO; k++)
         ret = fscanf(in,"%f",&sc->iso.val[k]);
@@ -295,19 +299,19 @@ int parsop(pScene sc,pMesh mesh) {
                               buf,pscol);
       strncpy(sc->par.pscolor,pscol,10);
       sc->par.coeff = atof(buf);
-      if ( sc->par.coeff < 0.0f ) sc->par.coeff = 0.0f;
-      if ( sc->par.coeff > 1.0f ) sc->par.coeff = 1.0f;
+      if ( sc->par.coeff < 0.0f ) sc->par.coeff = 0.0;
+      if ( sc->par.coeff > 1.0f ) sc->par.coeff = 1.0;
     }
     else if ( !strcmp(key,"time") ) {
-      ret = fscanf(in,"%f %f %f",&sc->par.maxtime,&sc->par.pertime,&sc->par.dt);
+      ret = fscanf(in,"%f %f %f %f",&sc->par.maxtime,&sc->par.pertime,&sc->par.dt,&sc->par.timdep);
       if ( !EatSpace(in) ) {
         fscanf(in,"%c",&ub);
-        sc->par.nbpart = MEDIT_MAX(atoi(&ub),1);
+        sc->par.nbpart = max(atoi(&ub),1);
       }
     }
     else if ( !strcmp(key,"nbmaterial") ) {
       fscanf(in,"%d",&nbmat);
-      sc->par.nbmat = MEDIT_MAX(2,nbmat);
+      sc->par.nbmat = max(2,nbmat);
       matInit(sc);
     }
     else if ( !strcmp(key,"material") ) {
@@ -333,33 +337,14 @@ int parsop(pScene sc,pMesh mesh) {
       if ( pm->dif[3] == 0.0 )  pm->dif[3] = 1.0;
       if ( pm->spe[3] == 0.0 )  pm->spe[3] = 1.0;
       if ( pm->emi[3] == 0.0 )  pm->emi[3] = 1.0;
-      pm->shininess = MEDIT_MIN(fabs(pm->shininess),128.0f);
-      pm->shininess = MEDIT_MAX(pm->shininess,3.0f);
+      pm->shininess = min(fabs(pm->shininess),128.0f);
+      pm->shininess = max(pm->shininess,3.0f);
       ++m;
     }
     
     /* stereo mode */
     else if ( !strcmp(key,"eyesep") ) {
       fscanf(in,"%f",&sc->par.eyesep);
-    }
-    //// Alec: send key commands
-    //else if ( !strcmp(key,"keyscene") )
-    //{
-    //  char key[256];
-    //  if(fscanf(in,"%1s",key) == 1)
-    //  {
-    //    keyScene(key[0],0,0);
-    //  }
-    //}
-    else if(!strcmp(key,"mode"))
-    {
-      char mode[255];
-      fscanf(in,"%s",mode);
-      if(!strcmp(mode,"S_MAP"))
-      {
-        // Alec: Q: Why doesn't this work?
-        //sc->mode |= S_MAP;
-      }
     }
 
   }

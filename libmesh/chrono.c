@@ -1,98 +1,93 @@
-/* 
- *  simulation of a chronograph
- *  in : tim
- *  out: tim.dtim = elapsed time in micro-secs
- *       tim.ptim = elapsed time in secs
- *       tim.call = number of calls
- *
- *  Written by Pascal J. Frey
- *  email: Pascal.Frey@inria.fr, 1999
-*/
+/* simulation of a chronograph
+ * modified (08/2010) for // usage */
 
-#ifdef __cplusplus
-extern "C" {
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "chrono.h"
+#ifdef _WIN32
+#include "rusage.h"
 #endif
 
-#include <math.h>
-#include <stdlib.h>
-#include <time.h>
-#include "chrono.h"
 
-
-/* return elapsed time in secs. */
-static double diftim(time_t t2,time_t t1) {
-  struct  tm  *ptm;
-  double  tim;
-  int     hh1,mm1,ss1,hh2,mm2,ss2;
-
-  ptm = localtime(&t1);
-  hh1 = ptm->tm_hour;
-  mm1 = ptm->tm_min;
-  ss1 = ptm->tm_sec;
-
-  ptm = localtime(&t2);
-  hh2 = ptm->tm_hour;
-  mm2 = ptm->tm_min;
-  ss2 = ptm->tm_sec;
-  if ( hh2 < hh1 )  hh2 += 24;
-  
-  tim  = 3600.0*(hh2-hh1);
-  tim += 60.0*(mm2-mm1);
-  tim += ss2-ss1;
-
-  return(tim);
-}
-
-
-/* get system and user times in micro-seconds */
 void  chrono(int cmode,mytime *ptt) {
-  time_t tt;
 
   if ( cmode == RESET ) {
-    ptt->dtim  = clock();
-    ptt->ctim  = 0.0f;
-    ptt->ptim  = 0;
-    ptt->call  = 0;
+    ptt->call = 0;
+		ptt->gini = ptt->gend = ptt->gdif = 0.0;
+		ptt->sini = ptt->send = ptt->sdif = 0.0;
+		ptt->uini = ptt->uend = ptt->udif = 0.0;
   }
+
   else {
-    ptt->dtim = difftime(clock(),ptt->dtim);  /* in secs */
+	  gettimeofday(&(ptt->rutim), NULL);
+ 
     if ( cmode == ON ) {
-      ptt->ptim = time(NULL);
-      ptt->call++;
+			ptt->gini  = (double)((ptt->rutim.tv_sec ) + (ptt->rutim.tv_usec) * BIG1);
+
+			getrusage(RUSAGE_SELF,&(ptt->ru));
+			ptt->rutim = ptt->ru.ru_utime;
+      ptt->uini  = (double)((ptt->rutim.tv_sec) * BIG + (ptt->rutim.tv_usec));
+      ptt->rutim = ptt->ru.ru_stime;
+      ptt->sini  = (double)((ptt->rutim.tv_sec )* BIG + (ptt->rutim.tv_usec));
     }
     else if ( cmode == OFF ) {
-      tt = time(NULL);
-      ptt->ctim += diftim(tt,ptt->ptim);
-      ptt->ptim  = 0;
+      ptt->gend  = (double)((ptt->rutim.tv_sec ) + (ptt->rutim.tv_usec) * BIG1);
+
+      getrusage(RUSAGE_SELF,&(ptt->ru));
+      ptt->rutim = ptt->ru.ru_utime;
+      ptt->uend  = (double)((ptt->rutim.tv_sec ) * BIG + (ptt->rutim.tv_usec));
+      ptt->rutim = ptt->ru.ru_stime;
+      ptt->send  = (double)((ptt->rutim.tv_sec ) * BIG + (ptt->rutim.tv_usec));
+
+      ptt->gdif += ptt->gend - ptt->gini;
+      
+      ptt->udif += (ptt->uend - ptt->uini) * BIG1;
+      ptt->sdif += (ptt->send - ptt->sini) * BIG1;
+    
+      ptt->call++;
     }
   }
-}
-
-
-/* return time (converted in secs */
-double gttime(mytime t) {
-
-  if ( t.ctim < MAXCLK )
-    return(t.dtim / (double)CLOCKS_PER_SEC);
-  else
-    return(t.ctim);
 }
 
 
 /* initialize time table */
 void  tminit(mytime *t,int maxtim) {
-  int     k;
+	mytime  *ptt;
+  int      k;
 
   for (k=0; k<maxtim; k++) {
-    t[k].dtim = clock();
-    t[k].ptim = 0;
-    t[k].ctim = 0.0;
-    t[k].call = 0;
+		ptt = &t[k];
+    ptt->call = 0;
+		ptt->gini = ptt->gend = ptt->gdif = 0.0;
+		ptt->sini = ptt->send = ptt->sdif = 0.0;
+		ptt->uini = ptt->uend = ptt->udif = 0.0;
   }
 }
 
 
-#ifdef __cplusplus
+/* print real time */
+char *printim(double elps) {
+	int    hh,mm,ss;
+	char  *data;
+	
+	data = malloc(32*sizeof(char));
+	assert(data);
+  if ( elps < 60.0 )
+    sprintf(data,"%5.3lfs",elps);
+  else if ( elps < 3600.0 ) {
+    mm = elps / 60.0;
+    ss = (int)elps - mm * 60;
+    sprintf(data,"%dm%ds (%7.3lfs)",mm,ss,elps);
+  }
+  else {
+    hh = elps / 3600;
+    mm = (elps - hh*3600) / 60;
+    ss = elps - mm*60 - hh*3600;
+    sprintf(data,"%dh%dm%ds",hh,mm,ss);
+  }
+
+	return(data);
 }
-#endif
+
 

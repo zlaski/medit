@@ -2,22 +2,8 @@
 #include "extern.h"
 #include "sproto.h"
 
-#define MAX_PRT    10
-#define MAX_LST    1024
-#define MAX_CPT    5000
-#define HSIZ       0.03
 
 extern int     reftype,refitem;
-
-
-typedef struct spart {
-  double    cb[4];
-  float     pos[MAX_PRT+1][3],col[MAX_PRT+1][3],size,norm,ct,step;
-  int       nsdep,cur;
-  ubyte     flag;
-} Particle;
-typedef Particle *pParticle;
-
 Particle  *tp;
 
 
@@ -134,9 +120,9 @@ void computeTetraParticle(pScene sc,pMesh mesh,int k) {
 
     /* vector field interpolation */
     pp->norm = field3DInterp(mesh,pp->nsdep,pp->cb,v);
-    pp->step = HSIZ*MEDIT_MIN(pp->size,pp->norm);
+    pp->step = HSIZ*min(pp->size,pp->norm);
     if ( sc->par.maxtime < FLT_MAX )
-      pp->step = MEDIT_MIN(0.05*sc->par.dt,pp->step);
+      pp->step = min(0.05*sc->par.dt,pp->step);
     if ( pp->step == 0.0 ) {
       pp->flag = 0;
       return;
@@ -194,7 +180,7 @@ int createParticle(pScene sc,pMesh mesh) {
     free(sc->stream);
   }
   sc->stream     = createStream(sc,mesh);
-  sc->par.cumtim = 0.0;
+  sc->par.cumtim = sc->par.timdep;
   sc->par.advtim = 0;
   assert(sc->stream);
   st = sc->stream;
@@ -243,11 +229,7 @@ int createParticle(pScene sc,pMesh mesh) {
   if ( !st->nbstl )  return(0);
 
   /* init positions */
-#ifdef IGL
-  tp = static_cast<pParticle>(calloc((st->nbstl+1),sizeof(Particle)));
-#else
   tp = calloc((st->nbstl+1),sizeof(Particle));
-#endif
   assert(tp);
   for (k=1; k<=st->nbstl; k++)
     tp[k].nsdep = mesh->ntet / 2;
@@ -279,8 +261,8 @@ int createParticle(pScene sc,pMesh mesh) {
     if ( pp->size == 0.0 )
       pp->step = EPS*sc->dmax;
     else
-      pp->step = HSIZ * MEDIT_MIN(pp->size,pp->norm);
-    pp->step = MEDIT_MIN(0.05*sc->par.dt,pp->step);
+      pp->step = HSIZ * min(pp->size,pp->norm);
+    pp->step = min(0.05*sc->par.dt,pp->step);
     pp->flag =  1;
     pp->cur  =  1;
     colorParticle(sc,pp);
@@ -368,8 +350,8 @@ int advectParticle(pScene sc,pMesh mesh) {
     if ( pp->size == 0.0 )
       pp->step = EPS*sc->dmax;
     else
-      pp->step = HSIZ * MEDIT_MIN(pp->size,pp->norm);
-    pp->step = MEDIT_MIN(0.05*sc->par.dt,pp->step);
+      pp->step = HSIZ * min(pp->size,pp->norm);
+    pp->step = min(0.05*sc->par.dt,pp->step);
     pp->flag =  1;
     pp->cur  =  1;
     colorParticle(sc,pp);

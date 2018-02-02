@@ -15,9 +15,6 @@ typedef unsigned char  ubyte;
 typedef unsigned short uShort;
 #endif
 
-#if IGL
-#  define MAX_HOT_DOG_SLICES 20
-#endif
 
 typedef struct spoint {
   double    c[3];
@@ -25,21 +22,24 @@ typedef struct spoint {
   short     ref;
   uShort    mark;
   char      tag,clip,flag;
-#ifdef IGL
-  // Distance to plane
-  char   hd_clip[MAX_HOT_DOG_SLICES];
-  double hd_dd1 [MAX_HOT_DOG_SLICES];
-#endif
 } Point;
 typedef Point     * pPoint;
 
 typedef struct striangle {
   int     v[3],nxt;
-  short   ref;              /* reference               */
+  short   ref;
   uShort  mark,cpt;
   char    clip;
 } Triangle;
 typedef Triangle  * pTriangle;
+
+typedef struct striangle2 {
+  int     v[6],nxt;
+  short   ref;
+  uShort  mark,cpt;
+  char    clip;
+} Triangle2;
+typedef Triangle2  * pTriangle2;
 
 typedef struct squad {
   int     v[4],nxt;
@@ -79,8 +79,7 @@ typedef struct extra {
 typedef Extra * pExtra;
 
 typedef struct solu {
-  float   bb;
-  float  *m;
+  float  *m,bb,time;
   int     ver,dim;
 } Solution;
 typedef Solution  * pSolution;
@@ -90,7 +89,7 @@ typedef struct mesh {
   double      xmin,ymin,zmin,xmax,ymax,zmax;
   double      xtra,ytra,ztra;
   float       bbmin,bbmax;
-  int         ne,nt,nq,ntet,nhex;
+  int         ne,ne2,nt,nt2,nq,ntet,ntet2,nhex;
   int         np,nc,nr,na,nre,nri;
   int         nvn,ntg,dim,ver,nbb,typage,nfield;
   uShort      mark;
@@ -98,6 +97,7 @@ typedef struct mesh {
 
   pPoint      point;
   pTriangle   tria;
+	pTriangle2  tria2;
   pQuad       quad;
   pEdge       edge;
   pTetra      tetra;

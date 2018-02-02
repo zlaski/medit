@@ -1,7 +1,5 @@
-#ifndef IGL
 #ifdef __cplusplus
 extern "C" {
-#endif
 #endif
 
 #include "medit.h"
@@ -136,8 +134,6 @@ pCamera initCamera(pScene sc,int up) {
   return(c);
 }
 
-#ifndef IGL
 #ifdef __cplusplus
 }
-#endif
 #endif

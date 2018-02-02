@@ -11,12 +11,6 @@
 short schw,schh;
 extern ubyte option,infogl,fullscreen,dosurf,stereoMode;
 
-/********************/
-/*  rajout popen    */
-extern ubyte dpopen;
-extern ubyte dpopenbin;
-extern ubyte dpopensol;
-
 void usage() {
   fprintf(stdout,"Usage: medit [options] [f1 .. fn]\n");
   fprintf(stdout,"\n** Generic options :\n");
@@ -34,6 +28,7 @@ void usage() {
   fprintf(stdout,"-xv width height\t Visual Schnauzer\n");
   fprintf(stdout,"-stereo\t Stereo mode\n");     
   fprintf(stdout,"\n");
+
   exit(1);
 }
 
@@ -41,7 +36,7 @@ void usage() {
 int parsar(int argc,char *argv[]) {
   pMesh    mesh;
   int      i;
-  int      k;
+
   /* default*/
   cv.nbm = cv.nbs = 0;
   i = 1;
@@ -53,56 +48,6 @@ int parsar(int argc,char *argv[]) {
       usage();
     else if ( !strcmp(argv[i],"-d") || !strcmp(argv[i],"-debug") )
       ddebug = TRUE;
-    // Rajout de l option popen
-    else if ( !strcmp(argv[i],"-popen") )
-      {
-	//printf("valeur de i=%i \n",i);
-	dpopen = TRUE;
-	
-	if( !strcmp(argv[i+1],"-filebin") ){
-	  dpopenbin = TRUE;
-	  i=i+1;
-	}
-
-	if( !strcmp(argv[i+1],"-addsol") ){
-	  dpopensol = TRUE;
-	  i=i+1; 
-	}
-	
-	if(dpopensol == TRUE && dpopenbin==TRUE){
-	  printf("medit with binary version of popen : mesh(es) and solution(s) \n");
-	}
-	else if(dpopensol == FALSE && dpopenbin==TRUE){
-	  printf("medit with binary version of popen : mesh(es)  \n");
-	}
-	else if(dpopensol == TRUE && dpopenbin==FALSE){
-	  printf("medit with popen : mesh(es) and solution(s) \n");
-	}
-	else{
-	  printf("medit with popen : mesh(es) \n");
-	}
-
-	if(i+1 != argc)
-	  {
-	    //printf("valeur de i=%i \n",i);
-	    cv.nbm = atoi(argv[i+1]);
-	    //printf("number of mesh= %i\n",cv.nbm);
-	    i++;
-	    if( cv.nbm==0) return(0);
-	  }
-	for( k=0; k<cv.nbm; k++){
-	  //printf("valeur de i=%i \n",i);
-	  cv.mesh[k] = (pMesh)M_calloc(1,sizeof(Mesh),"parsar.mesh");
-	  if ( !cv.mesh[k] )  return(0);
-	  mesh = cv.mesh[k];
-	  strcpy(mesh->name,argv[i+1]);
-	  printf("mesh_name= %s\n",mesh->name);
-	  i++;
-	}
-	//assert(i==argc);
-      }
-
-    // Fin Rajout de popen
     else if ( !strcmp(argv[i],"-i") )
       infogl = TRUE;
     else if ( !strcmp(argv[i],"-fs") )
@@ -157,6 +102,6 @@ int parsar(int argc,char *argv[]) {
     }
     i++;
   }
-  
+
   return(1);
 }

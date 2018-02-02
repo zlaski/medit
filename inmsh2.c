@@ -92,15 +92,9 @@ int inmsh2(pMesh mesh) {
       *ptr = 'E';
     if ( ptr = strpbrk(sz,"dD") )
       *ptr = 'E';
-    /*
-    sscanf(sx,"%f",&ppt->c[0]);
-    sscanf(sy,"%f",&ppt->c[1]);
-    sscanf(sz,"%f",&ppt->c[2]);
-    */
-    ppt->c[0] = atof(sx);
-    ppt->c[1] = atof(sy);
-    ppt->c[2] = atof(sz);
-
+    sscanf(sx,"%lf",&ppt->c[0]);
+    sscanf(sy,"%lf",&ppt->c[1]);
+    sscanf(sz,"%lf",&ppt->c[2]);
     ppt->ref = ref;
     ppt->tag = M_UNUSED;
   }

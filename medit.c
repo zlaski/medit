@@ -4,6 +4,7 @@
  * Copyright (c) Inria, 1999-2007. All rights reserved. */
 
 #include "medit.h"
+#include "compil.date"
 #ifdef ppc
 #include <unistd.h>
 #endif
@@ -12,16 +13,13 @@
 /* global variables (see extern.h) */
 GLboolean hasStereo = 1;
 Canvas    cv;
-mytime    ctim[TIMEMAX]; 
+mytime    ctim[TIMEMAX];
 ubyte     ddebug,animate,saveimg,imgtype,infogl,fullscreen;
 ubyte     quiet,option,morphing,stereoMode;
 int       menu,amenu,fmenu,femenu,vmenu,mmenu,smenu;
 int       clmenu,cmenu,vwmenu,txmenu,trmenu;
 int       animdep,animfin;
 
-/**********************/
-/*  Rajout pour popen */
-ubyte     dpopen,dpopensol,dpopenbin;
 
 static void excfun(int sigid) {
   fprintf(stdout,"\n Unexpected error:");  fflush(stdout);
@@ -100,7 +98,6 @@ int medit0() {
   clock_t  ct;
 
   /* default */
-  //  fprintf(stdout," \n medit0() \n");
   fprintf(stdout," Loading data file(s)\n");
   ct = clock();
 
@@ -129,22 +126,11 @@ int medit0() {
     if ( !cv.nbm ) return(0);
   }
 
-  if ( !cv.nbm ) { 
-    fprintf(stdout,"  Number of mesh missing:. Please enter : "); 
-    fflush(stdout); fflush(stdin);
-    fgets(data,120,stdin);
-    cv.nbm = atoi(data);
-  }
-
   /* read mesh(es) */
   k = 0;
   do {
     if ( !cv.mesh[k] ) {
-#ifdef IGL
-      cv.mesh[k] = static_cast<pMesh>(M_calloc(1,sizeof(Mesh),"medit0.mesh"));
-#else
       cv.mesh[k] = M_calloc(1,sizeof(Mesh),"medit0.mesh");
-#endif
       if ( !cv.mesh[k] )  return(0);
     }
     mesh = cv.mesh[k];
@@ -165,17 +151,13 @@ int medit0() {
       k--;
       continue;
     }
-
-    /* compute mesh box */  
+    /* compute mesh box */
     if ( (mesh->ntet && !mesh->nt) || (mesh->nhex && !mesh->nq) )  
-    {
-      fprintf(stderr,"Alec: skipping meshSurf\n");
-      //meshSurf(mesh);
-    }
+      meshSurf(mesh);
     meshBox(mesh,1);
-    if ( !quiet || true)  meshInfo(mesh);
+    if ( !quiet )  meshInfo(mesh);
 
-    /* read metric  */   
+    /* read metric */
     if ( !loadSol(mesh,mesh->name,1) )
       bbfile(mesh);
     if ( !quiet && mesh->nbb )
@@ -192,82 +174,6 @@ int medit0() {
 }
 
 
-int medit0_popen() {
-  pMesh    mesh;
-  char     data[128],*name;
-  int      k,l,ret;
-  clock_t  ct;
-
-  /* default */
-  /*fprintf(stdout," \n medit0() \n");*/
-  fprintf(stdout," Loading data file(s)\n");
-  ct = clock();
-
-
-  /* enter number of mesh */
-  if ( !cv.nbm ) { 
-    fprintf(stdout,"  Number of mesh missing:. Please enter : "); 
-    fflush(stdout); fflush(stdin);
-    fgets(data,128,stdin);
-    cv.nbm = atoi(data);
-  }
-
-  /* read mesh(es) */
-  k = 0;
-  do {
-    // printf("mesh number %i\n",k+1);
-    if ( !cv.mesh[k] ) {
-#ifdef IGL
-      cv.mesh[k] = static_cast<pMesh>(M_calloc(1,sizeof(Mesh),"medit0.mesh"));
-#else
-      cv.mesh[k] = M_calloc(1,sizeof(Mesh),"medit0.mesh");
-#endif
-      if ( !cv.mesh[k] )  return(0);
-    }
-    mesh = cv.mesh[k];
-    mesh->typ = 0;
-
-    //fgets(data,128,stdin);
-    //name = data;
-    //printf("data=%s\n",data);
-    //name = "toto.dat";
-    //strcpy(cv.mesh[k]->name,name);
-
-    if(dpopenbin) 
-      ret  = loadMesh_popen_bin(mesh);
-    else
-      ret  = loadMesh_popen(mesh);
-
-    /* compute mesh box */  
-    if ( (mesh->ntet && !mesh->nt) || (mesh->nhex && !mesh->nq) )  
-      meshSurf(mesh);
-    meshBox(mesh,1);
-    if ( !quiet || true)  meshInfo(mesh);
-
-    /*  /\* read metric *\/     // a changer lecture .sol et .bb */
-    /*    if ( !loadSol_popen(mesh,mesh->name,1) ) */
-    /*       bbfile_popen(mesh); */
-    /*     if ( !quiet && mesh->nbb ) */
-    /*       fprintf(stdout,"    Solutions  %8d\n",mesh->nbb); */
-    if( dpopensol ){
-      if(dpopenbin) 
-	loadSol_popen_bin(mesh,mesh->name,1);
-      else
-	loadSol_popen(mesh,mesh->name,1);
-    }
-    if ( !quiet && mesh->nbb )
-      fprintf(stdout,"    Solutions  %8d\n",mesh->nbb);
-  }
-  while ( ++k < cv.nbm );
-  cv.nbs = cv.nbm;
-
-  ct = difftime(clock(),ct);
-  fprintf(stdout,"  Input seconds:     %.2f\n",
-          (double)ct/(double)CLOCKS_PER_SEC);
-
-  return(cv.nbm);
-}
-
 int medit1() {
   pScene   scene;
   pMesh    mesh;
@@ -275,7 +181,6 @@ int medit1() {
   clock_t  ct;
 
   /* create grafix */
-  fprintf(stdout,"\n medit1() \n");
   fprintf(stdout,"\n Building scene(s)\n");
   ct = clock();
   for (k=0; k<cv.nbs; k++) {
@@ -294,7 +199,7 @@ int medit1() {
     parsop(scene,mesh);
     meshRef(scene,mesh);
     matSort(scene);
-    
+	
     if ( option == ISOSURF ) {
 	  if ( !mesh->nbb ) return(0);
       setupPalette(scene,mesh);
@@ -322,6 +227,7 @@ int main(int argc,char *argv[]) {
 
   fprintf(stdout,"  -- Medit,  Release %s (%s)\n",ME_VER,ME_REL);
   fprintf(stdout,"     %s.\n",ME_CPY);
+  fprintf(stdout,"     compiled: %s.\n\n",COMPIL);
 
   /* trap exceptions */
   signal(SIGABRT,excfun);
@@ -345,28 +251,19 @@ int main(int argc,char *argv[]) {
   animdep    = 0;
   animfin    = 0;
   ddebug     = FALSE;
-  quiet      = TRUE;//FALSE;
+  quiet      = FALSE;
   stereoMode = 0;
   cv.nbm = cv.nbs = 0;
 
-  /* default value for popen */
-  dpopen = FALSE;
-  dpopenbin = FALSE;
-  dpopensol = FALSE;
-
   /* init grafix */
   parsar(argc,argv);
-  //printf("fin de parsar");
 
   if ( option == ISOSURF ) {
-    fprintf(stdout,"ISOSURF");
     if ( !medit0() )  exit(1);
     if ( !medit1() )  exit(1);
     return(0);
   }
-
   glutInit(&argc,argv);
-  //printf("fin de glutInit");
 #ifdef ppc
   chdir(pwd);
 #endif
@@ -377,61 +274,24 @@ int main(int argc,char *argv[]) {
   else
     type = GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_STEREO;
   glutInitDisplayMode(type);
-#ifdef IGL
-  glutInitDisplayString( "rgba depth double samples>=8 ");
-#endif
   if ( infogl )  grInfo();
 
   /* call animate or normal mode */
-  if( dpopen == FALSE ){
-    
-    switch (option) {
-    case STANDARD:
-
-    case SCHNAUZER:
-      if ( !medit0() )  exit(1);
-      if ( !medit1() )  exit(1);
-      break;
-    case SEQUENCE:
-      if ( !animat() )  exit(1);
-      break;
-    case SEQUENCE+PARTICLE:
-      
-      if ( !animat() )  exit(1);
-      break;
-    case MORPHING:
-      
-      if ( !medit0() )  exit(1);
-      if ( !modeMorphing() )  exit(1);
-      morphing = GL_FALSE;
-      break;
-    default:
-      fprintf(stderr,"  ## Unrecognized option %d\n",option);
-      exit(1);
-      break;
-    }
-  }
-  else{
-   switch (option) {
-   case STANDARD:
-     
-   case SCHNAUZER:
-     
-     if ( !medit0_popen() )  exit(1);
-     if ( !medit1() )  exit(1);
-     break;
+  switch (option) {
+  case STANDARD:
+  case SCHNAUZER:
+    if ( !medit0() )  exit(1);
+    if ( !medit1() )  exit(1);
+    break;
   
   case SEQUENCE:
-    
     if ( !animat() )  exit(1);
     break;
   case SEQUENCE+PARTICLE:
-    
     if ( !animat() )  exit(1);
     break;
   case MORPHING:
-    
-    if ( !medit0_popen() )  exit(1);
+    if ( !medit0() )  exit(1);
     if ( !modeMorphing() )  exit(1);
     morphing = GL_FALSE;
     break;
@@ -439,7 +299,6 @@ int main(int argc,char *argv[]) {
     fprintf(stderr,"  ## Unrecognized option %d\n",option);
     exit(1);
     break;
-  }
   }
 
   /* main grafix loop */

@@ -37,8 +37,8 @@ GLuint drawNormals(pMesh mesh,pScene sc) {
       ppt = &mesh->point[k];
       ki  = mesh->extra->nv[k];
       if ( ki > 0 ) {
-	iadr  = 3*(ki-1)+1;
-        n     = &mesh->extra->n[ iadr ];
+	      iadr  = 3*(ki-1)+1;
+        n     = &mesh->extra->n[iadr];
         p[0]  = ppt->c[0];
         p[1]  = ppt->c[1];
         p[2]  = ppt->c[2];
@@ -58,10 +58,10 @@ GLuint drawNormals(pMesh mesh,pScene sc) {
       for ( i=0; i<3; i++) {
         kk = 3*(k-1)+i+1;
         ki = mesh->extra->nt[kk];
-	if ( ki > 0 ) {
-	  ppt   = &mesh->point[pt->v[i]];
-	  iadr  = 3*(ki-1)+1;
-          n     = &mesh->extra->n[ iadr ];
+	      if ( ki > 0 ) {
+	        ppt   = &mesh->point[pt->v[i]];
+	        iadr  = 3*(ki-1)+1;
+          n     = &mesh->extra->n[iadr];
           p[0]  = ppt->c[0];
           p[1]  = ppt->c[1];
           p[2]  = ppt->c[2];
@@ -69,7 +69,7 @@ GLuint drawNormals(pMesh mesh,pScene sc) {
           nn[1] = n[1];
           nn[2] = n[2];
           drawVector3D(p,nn,scal);
-	}
+	      }
       }
     }
   }
@@ -80,12 +80,12 @@ GLuint drawNormals(pMesh mesh,pScene sc) {
       pq = &mesh->quad[k];
       if ( !pq->v[0] )  continue;
       for ( i=0; i<4; i++) {
-   	kk = 4*(k-1)+i+1;
+   	    kk = 4*(k-1)+i+1;
         ki = mesh->extra->nq[kk];
-	if ( ki > 0 ) {
-	  ppt   = &mesh->point[pq->v[i]];
+	      if ( ki > 0 ) {
+	        ppt   = &mesh->point[pq->v[i]];
           iadr  = 3*(ki-1)+1;
-	  n     = &mesh->extra->n[ iadr ];
+	        n     = &mesh->extra->n[iadr];
           p[0]  = ppt->c[0];
           p[1]  = ppt->c[1];
           p[2]  = ppt->c[2];
@@ -106,8 +106,8 @@ GLuint drawNormals(pMesh mesh,pScene sc) {
       ppt = &mesh->point[k];
       ki  = mesh->extra->tv[k];
       if ( ki > 0 ) {
-	iadr  = 3*(ki-1)+1;
-	n     = &mesh->extra->t[ iadr ];
+	      iadr  = 3*(ki-1)+1;
+	      n     = &mesh->extra->t[iadr];
         p[0]  = ppt->c[0];
         p[1]  = ppt->c[1];
         p[2]  = ppt->c[2];
@@ -130,7 +130,7 @@ GLuint drawNormals(pMesh mesh,pScene sc) {
         if ( ki > 0 ) {
 	       ppt   = &mesh->point[pr->v[i]];
           iadr  = 3*(ki-1)+1;
-          n     = &mesh->extra->t[ iadr ];
+          n     = &mesh->extra->t[iadr];
           p[0]  = ppt->c[0];
           p[1]  = ppt->c[1];
           p[2]  = ppt->c[2];

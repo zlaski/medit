@@ -10,8 +10,8 @@ int loadGIS(pMesh mesh) {
   pSolution  ps;
   FILE      *fp;
   double     xxm,yym,ggx,ggy,hhz;
-  float     *te,cx,cy,cz,gu,hu,xmi,ymi;
-  int        i,j,k,sx,sy,ni,ret,bitsize,pos,ref;
+  float     *te,cx,cy,cz,gu,hu,xmi,ymi,alt;
+  int        i,j,k,sx,sy,ni,ret,pos,ref;
   char      *ptr,c,buf[256],data[256];
   ubyte      ityp;
   
@@ -59,8 +59,8 @@ int loadGIS(pMesh mesh) {
   while (1);
 
   /* header */
-  ret  = sscanf(buf,"%d",&sx);
-  ret += fscanf(fp,"%d",&sy);
+  ret  = sscanf(buf,"%d",&sy);
+  ret += fscanf(fp,"%d",&sx);
   ret += fscanf(fp,"%f %f %f",&cx,&cy,&cz);
   ret += fscanf(fp,"%f",&gu);
   ret += fscanf(fp,"%f",&hu);
@@ -71,13 +71,12 @@ int loadGIS(pMesh mesh) {
     return(0);
   }
 
-  bitsize = mesh->np*sizeof(float);
   if ( ddebug ) {
     fprintf(stdout,"   header: sx  %7d   sy %7d\n",sx,sy);
     fprintf(stdout,"           cx  %7.2f   cy %7.2f  cz %7.2f\n",cx,cy,cz);
     fprintf(stdout,"        units: %7.2f  %7.2f\n",gu,hu);
     fprintf(stdout,"          min: %7.3e  %7.3e\n",xmi,ymi);
-    fprintf(stdout,"   terrain size: %dx%d  %ld bytes\n",sx,sy,(long)bitsize);
+    fprintf(stdout,"   terrain size: %dx%d\n",sx,sy);
   }
 
   mesh->np = sx*sy;
@@ -102,10 +101,10 @@ int loadGIS(pMesh mesh) {
       for (i=1; i<=sx; i++) {
         k   = (j-1)*sx + i;
         ppt = &mesh->point[k];
-        fscanf(fp,"%f",&ppt->c[2]);
-        ppt->c[0] = (float)(ggx*(xxm + i-1));
-        ppt->c[1] = (float)(ggy*(yym + j-1));
-        ppt->c[2] = (float)(hhz*ppt->c[2]);
+        fscanf(fp,"%f",&alt);
+        ppt->c[0] = ggx*(xxm + i-1);
+        ppt->c[1] = ggy*(yym + j-1);
+        ppt->c[2] = hhz*alt;
       }
   }
   else {
@@ -128,10 +127,9 @@ int loadGIS(pMesh mesh) {
       for (i=1; i<=sx; i++) {
         k   = (j-1)*sx + i;
         ppt = &mesh->point[k];
-        ppt->c[2] = te[ni++];
+        ppt->c[2] = hhz * te[ni++];
         ppt->c[0] = ggx*(xxm + i-1);
         ppt->c[1] = ggy*(yym + j-1);
-        ppt->c[2] = hhz*ppt->c[2];
       }
     }
     free(te);

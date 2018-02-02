@@ -3,7 +3,6 @@ int    loadNextMesh(pMesh ,int ,int );
 int    animat();
 int    playAnim(pScene ,pMesh ,int ,int );
 void   glutIdle(void);
-int animParticle(pScene sc,pMesh mesh);
 
 /* camera.c */
 double  Azimuth(pCamera );
@@ -19,11 +18,8 @@ void   invertClip(pScene sc,pClip );
 void   drawClip(pScene ,pClip ,pMesh ,GLboolean );
 void   copyClip(pClip );
 int    pasteClip(pClip );
-void tiltClip(pScene sc,pClip clip);
 void   resetClip(pScene ,pClip ,pMesh );
 pClip  createClip(pScene ,pMesh );
-void resetCube(pScene sc,pCube cube,pMesh mesh);
-void dumpCube(pScene sc,pMesh mesh,pCube cube);
 
 void   updateCube(pCube ,pMesh );
 pCube  createCube(pScene ,pMesh );
@@ -42,37 +38,39 @@ GLuint  listQuad(pScene ,pMesh );
 GLuint  listTetra(pScene ,pMesh ,ubyte );
 GLuint  listHexa(pScene ,pMesh ,ubyte );
 
+/* eigenv.c */
+int    eigenv(int sym,double mat[6],double lambda[3],double v[3][3]);
+
 /* geometry.c */
 GLuint geomList(pScene ,pMesh );
 
 /* gisfil.c */
-int loadGIS(pMesh );
+int    loadGIS(pMesh );
 
 /* hash.c */
-int hashTria(pMesh );
-int hashTetra(pMesh );
-int hashHexa(pMesh mesh);
+int    hashTria(pMesh );
+int    hashTetra(pMesh );
+int    hashHexa(pMesh mesh);
 
 /* image.c */
 PPMimage *loadPPM(const char *imgname,int *type);
-int  savePPM(const char *imgname,pPPMimage img,int typimg);
-void saveEPS(pScene sc,const char *imgname,pPPMimage pixels);
-int  imgHard(pScene sc,char *data,char key);
+int    savePPM(const char *imgname,pPPMimage img,int typimg);
+void   saveEPS(pScene sc,const char *imgname,pPPMimage pixels);
+int    imgHard(pScene sc,char *data,char key);
 
 /* input/output */
 int    EatLine(FILE  *in);
+int    EatSpace(FILE  *in);
 int    inmsh2(pMesh mesh);
 int    bbfile(pMesh );
 int    loadMesh(pMesh );
 int    saveMesh(pScene ,pMesh ,char *,ubyte );
 int    loadSol(pMesh mesh,char *filename,int numsol);
-int    loadMesh_popen(pMesh); //pour popen
 
 /* ilists.c */
 GLuint listTriaIso(pScene ,pMesh );
 GLuint listQuadIso(pScene ,pMesh );
 GLuint listTetraIso(pScene ,pMesh );
-int tetraIsoPOVray(pScene sc,pMesh mesh);
 
 /* items.c */
 void   drawAxis(pScene ,int );
@@ -129,7 +127,6 @@ void   keyColor(unsigned char ,int ,int );
 void   menuColor(int );
 void   keyClip(unsigned char ,int ,int );
 void   menuClip(int );
-void keyCube(unsigned char key,int x,int y);
 void   keyFeature(unsigned char ,int ,int );
 void   menuFeature(int );
 void   menuImage(int );
@@ -160,7 +157,6 @@ int    modeMorphing();
  
 /* mouse.c */
 void   mouse(int button,int state,int x,int y);
-void   passive_motion(int x,int y);
 void   motion(int x,int y);
 void   redrawOverlay(int stretchX,int stretchY);
 void   motionCamera(int x,int y);
@@ -182,12 +178,9 @@ void   iniopt(pScene ,pMesh );
 int    parsop(pScene ,pMesh );
 
 /* particle.c */
-int createParticle(pScene ,pMesh );
-#ifdef IGL
-int advectParticle(pScene sc,pMesh mesh);
-int displayParticle(pScene sc,pMesh mesh);
-#endif
-
+int    createParticle(pScene ,pMesh );
+int    advectParticle(pScene sc,pMesh mesh);
+int    animParticle(pScene sc,pMesh mesh);
 
 /* path.c */
 int    pathAdd(pScene ,int, int);
@@ -245,6 +238,7 @@ double  sizeTria(pMesh ,int );
 int     locateTria(pMesh mesh,int nsdep,int base,float *p,double *cb);
 int     locateTetra(pMesh mesh,int nsdep,int base,float *p,double *cb);
 int     inTria(pMesh ,int ,float *,double *);
+int     inTetra(pMesh mesh,int nsdep,float *p,double *cb);
 int     listTetraStream(pScene ,pMesh ,float *,int );
 int     listHexaStream(pScene ,pMesh ,float *,int );
 int     listTriaStream(pScene ,pMesh ,float *);
@@ -252,8 +246,8 @@ pStream createStream(pScene ,pMesh );
 int     streamRefTria(pScene sc,pMesh mesh);
 int     streamRefQuad(pScene sc,pMesh mesh);
 int     streamRefPoint(pScene sc,pMesh mesh);
-int     listSaddleStream(pScene sc,pMesh mesh,int depart,
-                         float *pp,float *vv,double lambda);
+int     streamIsoPoint(pScene sc,pMesh mesh);
+int     listSaddleStream(pScene sc,pMesh mesh,int depart,float *pp,float *vv,double lambda);
 int     nxtPoint3D(pMesh mesh,int nsdep,float *p,float step,double *v);
 int     nxtPoint2D(pMesh mesh,int nsdep,float *p,float step,double *v);
 double  field2DInterp(pMesh mesh,int iel,double *cb,double *v);
@@ -262,9 +256,6 @@ double  field3DInterp(pMesh mesh,int iel,double *cb,double *v);
 double  sizeTria(pMesh mesh,int k);
 double  sizeQuad(pMesh mesh,int k);
 double  sizeTetra(pMesh mesh,int k);
-int streamIsoPoint(pScene sc,pMesh mesh);
-int inTetra(pMesh mesh,int nsdep,float *p,double *cb);
-
 
 /* tensor.c */
 GLuint listPointVector(pMesh ,ubyte );
@@ -284,15 +275,10 @@ void   setFont(char* name,int size);
 void   drwstr(GLuint x,GLuint y,char* format, ...);
 void   output2(GLfloat x,GLfloat y,char *format,...); 
 void   output3(GLfloat x,GLfloat y,GLfloat z,char *format,...);
-#ifdef IGL
-template <typename T>
-void hsvrgb(T *hsv,double *rgb);
-#else
 void   hsvrgb(double *hsv,double *rgb);
-#endif
 void   transformPoint(double u[4],float v[4],float m[16]);
-void transformPoint2(double u[4],float v[4],float m[16]) ;
 void   transformPointd(double u[4],double v[4],double m[16]);
+void   transformPoint2(double u[4],float v[4],float m[16]);
 void   transformVector(float u[4],float v[4],float m[16]); 
 void   multMatrix(GLfloat *p,GLfloat *a,GLfloat *b);
 void   rotateMatrix(GLfloat angle,GLfloat x,GLfloat y,GLfloat z,GLfloat rm[16]);
@@ -306,7 +292,6 @@ GLuint listTria2dVector(pMesh mesh);
 GLuint listTria3dVector(pMesh mesh);
 GLuint listClipTetraVector(pMesh mesh);
 GLuint listClipHexaVector(pMesh mesh);
-GLuint listQuad2dVector(pMesh mesh);
 
 /* view.c */
 void   copyView(pTransform view,pCamera cam,pPersp persp);
@@ -318,23 +303,15 @@ void   unlinkView(pScene sc1);
 int    zaldy1(pMesh mesh);
 int    zaldy2(pMesh mesh);
 
-#ifdef IGL
-/* cenrad.c */
-int cenrad(pMesh mesh,int iel,double *c,double *rad);
-/* param.c */
-void parEdit(pScene sc);
-/* inout_popenbinaire.c */
-int loadMesh_popen_bin(pMesh mesh);
-int loadSol_popen_bin(pMesh mesh,char *filename,int numsol);
-/* inout_morice.c */
-int loadSol_popen(pMesh mesh,char *filename,int numsol);
-/* sftcpy.c */
-int sftcpy(pScene sc,pMesh mesh);
-/* ellipse.c */
-void drawEllipsoid(pScene sc,pMesh mesh,int typel,int k);
-void drawEllipse(pScene sc,pMesh mesh,int typel,int k);
+void   keyCube(unsigned char key,int x,int y);
+void   dumpCube(pScene sc,pMesh mesh,pCube cube);
+void   resetCube(pScene sc,pCube cube,pMesh mesh);
+void   tiltClip(pScene sc,pClip clip);
+void   parEdit(pScene sc);
+int    tetraIsoPOVray(pScene sc,pMesh mesh);
+GLuint listQuad2dVector(pMesh mesh);
+int    sftcpy(pScene sc,pMesh mesh);
+int    cenrad(pMesh mesh,int iel,double *c,double *rad);
+void   circumSphere(pScene sc,pMesh mesh,int typel,int k);
 GLuint drawAllEllipse(pScene sc,pMesh mesh);
-void circumSphere(pScene sc,pMesh mesh,int typel,int k);
-/* bbfile.c */
-int EatSpace(FILE  *in);
-#endif
+void   drawEllipsoid(pScene sc,pMesh mesh,int typel,int k);

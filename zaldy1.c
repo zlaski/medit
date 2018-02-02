@@ -1,18 +1,4 @@
-/*
- *  memory allocation for data structures
- *
- *  Written by Pascal J. Frey, Inria-Rocquencourt
- *  Copyright (c) Inria, 1999.  All rights reserved. 
-*/
-
-#ifndef IGL
-#ifdef __cplusplus
-extern "C" {
-#endif
-#endif
-
 #include <assert.h>
-#include <stdlib.h>
 #include "medit.h"
 #include "extern.h"
 #include "sproto.h"
@@ -26,8 +12,14 @@ int zaldy1(pMesh mesh) {
   assert(mesh->point);
 
   if ( ddebug ) printf("allocate %d tria\n",mesh->nt);
-  mesh->tria = (pTriangle)M_calloc(mesh->nt+1,sizeof(Triangle),"zaldy1.tria");
-  assert(mesh->tria);
+  if ( mesh->nt ) {
+    mesh->tria = (pTriangle)M_calloc(mesh->nt+1,sizeof(Triangle),"zaldy1.tria");
+    assert(mesh->tria);
+  }
+  if ( mesh->nt2 ) {
+    mesh->tria2 = (pTriangle2)M_calloc(mesh->nt2+1,sizeof(Triangle2),"zaldy1.tria2");
+    assert(mesh->tria2);
+	}
 
   if ( ddebug ) printf("allocate %d quad\n",mesh->nq);
   if ( mesh->nq ) {

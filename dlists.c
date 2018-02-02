@@ -5,7 +5,7 @@
 /* list of element faces */
 static int ct[4][3] = { {0,1,2}, {0,3,1}, {1,3,2}, {0,2,3} };
 static int ch[6][4] = { {0,1,2,3}, {4,5,6,7}, {0,1,5,4}, 
-			{1,2,6,5}, {2,3,7,6}, {0,3,7,4} };
+      {1,2,6,5}, {2,3,7,6}, {0,3,7,4} };
 
 static float redcol[4]   = {1.0, 0.0, 0.0, 1.0};
 static float greencol[4] = {0.0, 0.6, 0.0, 1.0}; 
@@ -19,7 +19,7 @@ GLuint listTria(pScene sc,pMesh mesh) {
   GLuint     dlist;
   double     dd,ax,ay,az,bx,by,bz;
   float      cx,cy,cz,n[3],pp0[3],pp1[3],pp2[3];
-  int        k,m,mm,is0,is1,is2,transp;
+  int        i,k,m,mm,is0,is1,is2,transp;
 
   /* default */
   if ( !mesh->nt ) return(0);
@@ -41,21 +41,11 @@ GLuint listTria(pScene sc,pMesh mesh) {
     if ( !(sc->mode & S_MATERIAL) )
       pm = &sc->material[DEFAULT_MAT];
     transp = pm->amb[3] < 0.999 || pm->dif[3] < 0.999 || pm->spe[3] < 0.999;
-
-#ifdef IGL
-    int old_depth_func =0;
-    glGetIntegerv(GL_DEPTH_FUNC,&old_depth_func);
-#endif
     if ( transp ) {
       glEnable(GL_BLEND);
       glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-#ifdef IGL
-      glDepthFunc(GL_ALWAYS);
-#else
       glDepthMask(GL_FALSE);
-#endif
     }
-
     glMaterialfv(GL_FRONT_AND_BACK,GL_AMBIENT,pm->amb);
     glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,pm->spe);
     glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,pm->emi);
@@ -63,162 +53,93 @@ GLuint listTria(pScene sc,pMesh mesh) {
     glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,pm->dif);
 
     glBegin(GL_TRIANGLES);
-    if ( sc->type & S_FLAT ) {
-      while ( k != 0 ) {
-        pt = &mesh->tria[k];
-        if ( !pt->v[0] ) {
-          k = pt->nxt;
-          continue;
-        }
-        p0 = &mesh->point[pt->v[0]];
-        p1 = &mesh->point[pt->v[1]];
-        p2 = &mesh->point[pt->v[2]];
-
-        /* compute normal */
-        ax = p1->c[0] - p0->c[0];
-        ay = p1->c[1] - p0->c[1];
-        az = p1->c[2] - p0->c[2];
-        bx = p2->c[0] - p0->c[0];
-        by = p2->c[1] - p0->c[1];
-        bz = p2->c[2] - p0->c[2];
-        n[0] = ay*bz - az*by;
-        n[1] = az*bx - ax*bz;
-        n[2] = ax*by - ay*bx;
-        dd = n[0]*n[0] + n[1]*n[1] + n[2]*n[2];
-        if ( dd > 0.0 ) {
-          dd = 1.0 / sqrt(dd);
-          n[0] *= dd;
-          n[1] *= dd;
-          n[2] *= dd;
-        }
-
-        if ( sc->shrink < 1.0 ) {
-          cx = (p0->c[0] + p1->c[0] + p2->c[0]) / 3.0;
-          cy = (p0->c[1] + p1->c[1] + p2->c[1]) / 3.0;
-          cz = (p0->c[2] + p1->c[2] + p2->c[2]) / 3.0;
-          pp0[0] = sc->shrink*(p0->c[0]-cx)+cx;
-          pp0[1] = sc->shrink*(p0->c[1]-cy)+cy;
-          pp0[2] = sc->shrink*(p0->c[2]-cz)+cz;
-          pp1[0] = sc->shrink*(p1->c[0]-cx)+cx;
-          pp1[1] = sc->shrink*(p1->c[1]-cy)+cy;
-          pp1[2] = sc->shrink*(p1->c[2]-cz)+cz;
-          pp2[0] = sc->shrink*(p2->c[0]-cx)+cx;
-          pp2[1] = sc->shrink*(p2->c[1]-cy)+cy;
-          pp2[2] = sc->shrink*(p2->c[2]-cz)+cz;
-          glNormal3fv(n);  glVertex3fv(pp0);
-          glNormal3fv(n);  glVertex3fv(pp1);
-          glNormal3fv(n);  glVertex3fv(pp2);
-        }
-        else {
-          glNormal3fv(n);  glVertex3f(p0->c[0],p0->c[1],p0->c[2]);
-          glNormal3fv(n);  glVertex3f(p1->c[0],p1->c[1],p1->c[2]);
-          glNormal3fv(n);  glVertex3f(p2->c[0],p2->c[1],p2->c[2]);
-        }
+    while ( k != 0 ) {
+      pt = &mesh->tria[k];
+      if ( !pt->v[0] ) {
         k = pt->nxt;
+        continue;
       }
-    }
-    else {
-      while ( k != 0 ) {
-        pt = &mesh->tria[k];
-        if ( !pt->v[0] ) {
-          k = pt->nxt;
-          continue;
+      p0 = &mesh->point[pt->v[0]];
+      p1 = &mesh->point[pt->v[1]];
+      p2 = &mesh->point[pt->v[2]];
+    
+      if ( sc->shrink < 1.0 ) {
+        cx = (p0->c[0] + p1->c[0] + p2->c[0]) / 3.0;
+        cy = (p0->c[1] + p1->c[1] + p2->c[1]) / 3.0;
+        cz = (p0->c[2] + p1->c[2] + p2->c[2]) / 3.0;
+        pp0[0] = sc->shrink*(p0->c[0]-cx)+cx;
+        pp0[1] = sc->shrink*(p0->c[1]-cy)+cy;
+        pp0[2] = sc->shrink*(p0->c[2]-cz)+cz;
+        pp1[0] = sc->shrink*(p1->c[0]-cx)+cx;
+        pp1[1] = sc->shrink*(p1->c[1]-cy)+cy;
+        pp1[2] = sc->shrink*(p1->c[2]-cz)+cz;
+        pp2[0] = sc->shrink*(p2->c[0]-cx)+cx;
+        pp2[1] = sc->shrink*(p2->c[1]-cy)+cy;
+        pp2[2] = sc->shrink*(p2->c[2]-cz)+cz;
+      }
+      else {
+        for (i=0; i<3 ; i++) {
+          pp0[i] = p0->c[i];
+          pp1[i] = p1->c[i];
+          pp2[i] = p2->c[i];
         }
-        p0 = &mesh->point[pt->v[0]];
-        p1 = &mesh->point[pt->v[1]];
-        p2 = &mesh->point[pt->v[2]];
-
-        /* compute normal */
-        ax = p1->c[0] - p0->c[0];
-        ay = p1->c[1] - p0->c[1];
-        az = p1->c[2] - p0->c[2];
-        bx = p2->c[0] - p0->c[0];
-        by = p2->c[1] - p0->c[1];
-        bz = p2->c[2] - p0->c[2];
-        n[0] = ay*bz - az*by;
-        n[1] = az*bx - ax*bz;
-        n[2] = ax*by - ay*bx;
-        dd = n[0]*n[0] + n[1]*n[1] + n[2]*n[2];
-        if ( dd > 0.0 ) {
-          dd = 1.0 / sqrt(dd);
-          n[0] *= dd;
-          n[1] *= dd;
-          n[2] *= dd;
-        }
-
+      }
+    
+      /* compute normal */
+      ax = p1->c[0] - p0->c[0];
+      ay = p1->c[1] - p0->c[1];
+      az = p1->c[2] - p0->c[2];
+      bx = p2->c[0] - p0->c[0];
+      by = p2->c[1] - p0->c[1];
+      bz = p2->c[2] - p0->c[2];
+      n[0] = ay*bz - az*by;
+      n[1] = az*bx - ax*bz;
+      n[2] = ax*by - ay*bx;
+      dd = n[0]*n[0] + n[1]*n[1] + n[2]*n[2];
+      if ( dd > 0.0 ) {
+        dd = 1.0 / sqrt(dd);
+        n[0] *= dd;
+        n[1] *= dd;
+        n[2] *= dd;
+      }
+    
+      if ( sc->type & S_FLAT ) {
+        glNormal3fv(n);  glVertex3fv(pp0);
+        glNormal3fv(n);  glVertex3fv(pp1);
+        glNormal3fv(n);  glVertex3fv(pp2);
+      }
+      else {
         is0 = is1 = is2 = 0;
         if ( mesh->extra->iv ) {
-          if ( pt->v[0] <= mesh->nvn )
-            is0 = mesh->extra->nv[pt->v[0]];
-          if ( pt->v[1] <= mesh->nvn )
-            is1 = mesh->extra->nv[pt->v[1]];
-          if ( pt->v[2] <= mesh->nvn )
-            is2 = mesh->extra->nv[pt->v[2]];
+          if ( pt->v[0] <= mesh->nvn )  is0 = mesh->extra->nv[pt->v[0]];
+          if ( pt->v[1] <= mesh->nvn )  is1 = mesh->extra->nv[pt->v[1]];
+          if ( pt->v[2] <= mesh->nvn )  is2 = mesh->extra->nv[pt->v[2]];
         }
-        if ( !is0 && pt->v[0] <= mesh->extra->it )
-          is0 = mesh->extra->nt[3*(k-1)+1];
-        if ( !is1 && pt->v[1] <= mesh->extra->it )
-          is1 = mesh->extra->nt[3*(k-1)+2];
-        if ( !is2 && pt->v[2] <= mesh->extra->it )
-          is2 = mesh->extra->nt[3*(k-1)+3];
-
-        if ( sc->shrink < 1.0 ) {
-          cx = (p0->c[0] + p1->c[0] + p2->c[0]) / 3.;
-          cy = (p0->c[1] + p1->c[1] + p2->c[1]) / 3.;
-          cz = (p0->c[2] + p1->c[2] + p2->c[2]) / 3.;
-          pp0[0] = sc->shrink*(p0->c[0]-cx)+cx;
-          pp0[1] = sc->shrink*(p0->c[1]-cy)+cy;
-          pp0[2] = sc->shrink*(p0->c[2]-cz)+cz;
-          pp1[0] = sc->shrink*(p1->c[0]-cx)+cx;
-          pp1[1] = sc->shrink*(p1->c[1]-cy)+cy;
-          pp1[2] = sc->shrink*(p1->c[2]-cz)+cz;
-          pp2[0] = sc->shrink*(p2->c[0]-cx)+cx;
-          pp2[1] = sc->shrink*(p2->c[1]-cy)+cy;
-          pp2[2] = sc->shrink*(p2->c[2]-cz)+cz;
-          
-          if ( !is0 )
-            glNormal3fv(n);  
-          else
-            glNormal3fv(&mesh->extra->n[3*(is0-1)+1]);
-          glVertex3fv(pp0);
-          if ( !is1 )
-            glNormal3fv(n);  
-          else
-            glNormal3fv(&mesh->extra->n[3*(is1-1)+1]);
-          glVertex3fv(pp1);
-          if ( !is2 )
-            glNormal3fv(n);
-          else
-            glNormal3fv(&mesh->extra->n[3*(is2-1)+1]);
-          glVertex3fv(pp2);
-        }
-        else {
-          if ( !is0 )
-            glNormal3fv(n);  
-          else
-            glNormal3fv(&mesh->extra->n[3*(is0-1)+1]);
-          glVertex3f(p0->c[0],p0->c[1],p0->c[2]);
-          if ( !is1 )
-            glNormal3fv(n);  
-          else
-            glNormal3fv(&mesh->extra->n[3*(is1-1)+1]);
-          glVertex3f(p1->c[0],p1->c[1],p1->c[2]);
-          if ( !is2 )
-            glNormal3fv(n);  
-          else
-            glNormal3fv(&mesh->extra->n[3*(is2-1)+1]);
-          glVertex3f(p2->c[0],p2->c[1],p2->c[2]);
-        }
-        k = pt->nxt;
+        if ( !is0 && pt->v[0] <= mesh->extra->it )  is0 = mesh->extra->nt[3*(k-1)+1];
+        if ( !is1 && pt->v[1] <= mesh->extra->it )  is1 = mesh->extra->nt[3*(k-1)+2];
+        if ( !is2 && pt->v[2] <= mesh->extra->it )  is2 = mesh->extra->nt[3*(k-1)+3];
+    
+        if ( !is0 )
+          glNormal3fv(n);  
+        else
+          glNormal3fv(&mesh->extra->n[3*(is0-1)+1]);
+        glVertex3fv(pp0);
+        if ( !is1 )
+          glNormal3fv(n);  
+        else
+          glNormal3fv(&mesh->extra->n[3*(is1-1)+1]);
+        glVertex3fv(pp1);
+        if ( !is2 )
+          glNormal3fv(n);
+        else
+          glNormal3fv(&mesh->extra->n[3*(is2-1)+1]);
+        glVertex3fv(pp2);
       }
+      k = pt->nxt;
     }
     glEnd();
     if ( transp ) {
-#ifdef IGL
-      glDepthFunc(old_depth_func);
-#else
       glDepthMask(GL_TRUE);
-#endif
       glDisable(GL_BLEND);
     }
   }
@@ -226,6 +147,7 @@ GLuint listTria(pScene sc,pMesh mesh) {
   glEndList();
   return(dlist);
 }
+
 
 
 /* build list of quadrilaterals */
@@ -472,7 +394,7 @@ GLuint listTetra(pScene sc,pMesh mesh,ubyte clip) {
   dlist = glGenLists(1);
   glNewList(dlist,GL_COMPILE);
   if ( glGetError() )  return(0);
-  shrink = MEDIT_MIN(sc->shrink,0.995f);
+  shrink = min(sc->shrink,0.995);
 
   /* scan tetra */
   for (m=0; m<sc->par.nbmat; m++) {
@@ -481,29 +403,12 @@ GLuint listTetra(pScene sc,pMesh mesh,ubyte clip) {
     k  = pm->depmat[LTets];
     if ( !k || pm->flag )  continue;
 
-    bool transp = 0;
-#ifdef IGL
-    int old_depth_func =0;
-    glGetIntegerv(GL_DEPTH_FUNC,&old_depth_func);
-#endif
-
-    transp = sc->igl_params->tet_color[3]<0.999;
-    if ( transp ) {
-      glEnable(GL_BLEND);
-      glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-#ifdef IGL
-      glDepthFunc(GL_ALWAYS);
-#else
-      glDepthMask(GL_FALSE);
-#endif
-    }
     if ( sc->mode & S_MATERIAL ) {
-
-      //if ( pm->dif[3] < 0.999 ) {
-      //  glDepthMask(GL_FALSE);
-      //  glBlendFunc(GL_DST_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-      //  glEnable(GL_BLEND);
-      //}
+      if ( pm->dif[3] < 0.999 ) {
+        glDepthMask(GL_FALSE);
+        glBlendFunc(GL_DST_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+        glEnable(GL_BLEND);
+      }
       glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,pm->dif);
       glMaterialfv(GL_FRONT_AND_BACK,GL_AMBIENT,pm->amb);
       glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,pm->spe);
@@ -511,11 +416,7 @@ GLuint listTetra(pScene sc,pMesh mesh,ubyte clip) {
       glMaterialfv(GL_FRONT_AND_BACK,GL_SHININESS,&pm->shininess);
     }
     else
-#ifdef IGL
-      glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,sc->igl_params->tet_color);
-#else
       glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,redcol);
-#endif
     
     /* display triangular faces */
     glBegin(GL_TRIANGLES);
@@ -538,45 +439,41 @@ GLuint listTetra(pScene sc,pMesh mesh,ubyte clip) {
       cz *= 0.25;
 
       for (l=0; l<4; l++) {
-	p0 = &mesh->point[pt->v[ct[l][0]]];
-	p1 = &mesh->point[pt->v[ct[l][1]]];
-	p2 = &mesh->point[pt->v[ct[l][2]]];
+  p0 = &mesh->point[pt->v[ct[l][0]]];
+  p1 = &mesh->point[pt->v[ct[l][1]]];
+  p2 = &mesh->point[pt->v[ct[l][2]]];
 
-	/* compute face normal */
-	ax = p1->c[0] - p0->c[0]; ay = p1->c[1] - p0->c[1]; az = p1->c[2] - p0->c[2];
-	bx = p2->c[0] - p0->c[0]; by = p2->c[1] - p0->c[1]; bz = p2->c[2] - p0->c[2];
-	n[0] = ay*bz - az*by;
-	n[1] = az*bx - ax*bz;
-	n[2] = ax*by - ay*bx;
-	d = n[0]*n[0] + n[1]*n[1] + n[2]*n[2];
-	if ( d > 0.0f ) {
-	  d = 1.0f / sqrt(d);
-	  n[0] *= d;  
+  /* compute face normal */
+  ax = p1->c[0] - p0->c[0]; ay = p1->c[1] - p0->c[1]; az = p1->c[2] - p0->c[2];
+  bx = p2->c[0] - p0->c[0]; by = p2->c[1] - p0->c[1]; bz = p2->c[2] - p0->c[2];
+  n[0] = ay*bz - az*by;
+  n[1] = az*bx - ax*bz;
+  n[2] = ax*by - ay*bx;
+  d = n[0]*n[0] + n[1]*n[1] + n[2]*n[2];
+  if ( d > 0.0f ) {
+    d = 1.0f / sqrt(d);
+    n[0] *= d;  
           n[1] *= d;  
           n[2] *= d;
-	}
-	glNormal3fv(n);
-	glVertex3f(shrink*(p0->c[0]-cx)+cx,
+  }
+  glNormal3fv(n);
+  glVertex3f(shrink*(p0->c[0]-cx)+cx,
                    shrink*(p0->c[1]-cy)+cy,
                    shrink*(p0->c[2]-cz)+cz);
-	glNormal3fv(n);
-	glVertex3f(shrink*(p1->c[0]-cx)+cx,
+  glNormal3fv(n);
+  glVertex3f(shrink*(p1->c[0]-cx)+cx,
                    shrink*(p1->c[1]-cy)+cy,
                    shrink*(p1->c[2]-cz)+cz);
-	glNormal3fv(n);
-	glVertex3f(shrink*(p2->c[0]-cx)+cx,
+  glNormal3fv(n);
+  glVertex3f(shrink*(p2->c[0]-cx)+cx,
                    shrink*(p2->c[1]-cy)+cy,
                    shrink*(p2->c[2]-cz)+cz);
       }
       k = pt->nxt;
     }
     glEnd();
-    if ( transp ) {
-#ifdef IGL
-      glDepthFunc(old_depth_func);
-#else
+    if ( sc->mode & S_MATERIAL && pm->dif[3] < 0.999 ) {
       glDepthMask(GL_TRUE);
-#endif
       glDisable(GL_BLEND);
     }
   }
@@ -603,7 +500,7 @@ GLuint listHexa(pScene sc,pMesh mesh,ubyte clip) {
   dlist = glGenLists(1);
   glNewList(dlist,GL_COMPILE);
   if ( glGetError() )  return(0);
-  shrink = MEDIT_MIN(sc->shrink,0.995f);
+  shrink = min(sc->shrink,0.995);
 
   /* scan hexa */
   for (m=0; m<sc->par.nbmat; m++) {

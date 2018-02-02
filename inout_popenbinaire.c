@@ -8,10 +8,11 @@ extern "C"{
 #endif
 #include "extern.h"
 #include "string.h"
-#ifdef WIN32
+#ifdef _WIN32
+#include <io.h>
 #include <fcntl.h>
 #endif
-#ifdef IGL
+#if defined(IGL) || defined(_WIN32)
 #include "eigenv.h"
 #endif
 
@@ -116,7 +117,7 @@ int loadMesh_popen_bin(pMesh mesh) {
   pHexa       ph;
   double      d,dp1,dp2,dp3,dn[3];
   float      *n,fp1,fp2,fp3;
-  int         i,ia,ib,inm,ref,is,k,disc,nn,nt,nq;
+  int         i,ia,ib,inm,ref,is,k,disc,nn,nt,nq=0;
   char       *ptr,data[256];
   /* Rajout popen*/
   char       *tictac;
@@ -810,7 +811,7 @@ int loadSol_popen_bin(pMesh mesh,char *filename,int numsol) {
   double       dbuf[ GmfMaxTyp ];
   float        fbuf[ GmfMaxTyp ];
   double       m[6],lambda[3],eigv[3][3],vp[2][2];
-  int          inm,k,i,key,nel,size,type,iord,off,typtab[GmfMaxTyp],ver,dim;
+  int          inm=0,k,i,key,nel,size,type,iord,off,typtab[GmfMaxTyp],ver,dim;
   char        *ptr,data[128];
 
   // rajout pour popen
@@ -886,7 +887,7 @@ int loadSol_popen_bin(pMesh mesh,char *filename,int numsol) {
 #ifdef IGL
 	if(debug) printf("SolAtTriangles : nel %d, mesh->nt %d \n",nel,mesh->nt);
 #else
-	if(debug) printf(stdout,"SolAtTriangles : nel %d, mesh->nt %d \n",nel,mesh->nt);
+	if(debug) fprintf(stdout,"SolAtTriangles : nel %d, mesh->nt %d \n",nel,mesh->nt);
 #endif
 	if ( nel && nel != mesh->nt ) {
 	  fprintf(stderr,"  %%%% Wrong number %d.\n",nel);

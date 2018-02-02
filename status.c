@@ -1,9 +1,3 @@
-#ifndef IGL
-#ifdef __cplusplus
-extern "C" {
-#endif
-#endif
-
 #include "medit.h"
 #include "extern.h"
 #include "sproto.h"
@@ -75,7 +69,7 @@ void redrawStatusBar(pScene sc) {
   float  frame,elpms;
   static float fps=0.0,lastfr = 0.0;
   static int   nfr = 0,pps = 0;
-  
+
   if ( sc->par.xs < 100 )  return;
   if ( ddebug )  fprintf(stdout,"redrawStatusBar\n");
   glDisable(GL_DEPTH_TEST);
@@ -94,7 +88,7 @@ void redrawStatusBar(pScene sc) {
   glColor3f(1.0-sc->par.back[0],1.0-sc->par.back[1],1.0-sc->par.back[2]);
   if ( animate && !(sc->isotyp & S_PARTICLE) ) {
     nfr++;
-    frame = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
+    frame = glutGet(GLUT_ELAPSED_TIME) / 1000.0;
     elpms = frame - lastfr;
     if ( elpms > 0.999 ) {
       fps = nfr / elpms;
@@ -113,10 +107,16 @@ void redrawStatusBar(pScene sc) {
     output2(15,28,"%d",abs(imstep));
 
   if ( sc->isotyp & S_STREAML && sc->par.maxtime < FLT_MAX )
-    output2(15,8,"t= %8.3f",sc->par.cumtim);
+    output2(15,8,"t= %8,3f",sc->par.cumtim);
   else if ( sc->isotyp & S_PARTICLE )
     output2(15,8,"t= %8.3f",sc->par.cumtim);
-  
+  else if ( sc->type & S_DECO && sc->par.dt > 1.0e-5) {
+    output2(15,8,"t= %8.3f",sc->par.cumtim);
+  }
+  else if ( sc->type & S_DECO && mesh->sol && mesh->sol->time > 0.0 ) {
+    output2(15,8,"t= %8.3f",mesh->sol->time);
+	}
+
   /* clip eqn */
   if ( clip->active & C_ON && !(clip->active & C_HIDE) ) {
     sprintf(buf,"Eqn: ");
@@ -155,7 +155,6 @@ void mouseStatus(int button,int state,int x,int y) {
 
   /* default */
   if ( ddebug ) printf("control mouse %d\n",state);
-  
   if ( button == GLUT_LEFT_BUTTON ) {
     if ( x < 16 && x > 5 )        axis = X_AXIS;
     else if ( x < 26 && x > 15 )  axis = Y_AXIS;
@@ -177,10 +176,3 @@ void mouseStatus(int button,int state,int x,int y) {
     }
   }
 }
-
-
-#ifndef IGL
-#ifdef __cplusplus
-}
-#endif
-#endif

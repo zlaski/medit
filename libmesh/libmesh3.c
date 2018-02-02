@@ -131,7 +131,7 @@ static void read_sol_headers(LM_mesh_struct *);
 /* Open a mesh file in read or write mode					*/
 /*----------------------------------------------------------*/
 
-int LM_open_mesh(const char *filename, int mode, LM_mesh_struct *mesh, ...)
+int LM_open_mesh(char *filename, int mode, LM_mesh_struct *mesh, ...)
 {
 	int i;
 	va_list pa;
@@ -423,11 +423,7 @@ int LM_write_field(LM_mesh_struct *mesh, int kw_code, int nbl, void *buffer, ...
 
 		nbsol = va_arg(pa, int);
 
-#ifdef IGL
 		if(!(mesh->sol_headers[ kw_code ] = malloc((nbsol+2) * sizeof(int))))
-#else
-		if(!(mesh->sol_headers[ kw_code ] = malloc((nbsol+2) * sizeof(int))))
-#endif
 			return(0);
 
 		mesh->sol_headers[ kw_code ][0] = nbsol;
@@ -915,7 +911,7 @@ static void read_sol_headers(LM_mesh_struct *mesh)
 
 		nbsol = read_int(mesh);
 
-		if( (mesh->sol_headers[i] = malloc((nbsol+2) * sizeof(int))))
+		if(mesh->sol_headers[i] = malloc((nbsol+2) * sizeof(int)))
 		{
 			mesh->sol_headers[i][0] = nbsol;
 			solsize = 0;

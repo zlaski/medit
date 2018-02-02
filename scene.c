@@ -2,18 +2,6 @@
 #include "extern.h"
 #include "sproto.h"
 
-#ifdef IGL
-#  include "IGLParams.h"
-#  include <igl/canonical_quaternions.h>
-#  include <igl/quat_to_mat.h>
-#  include <igl/mat_to_quat.h>
-#  include <igl/snap_to_canonical_view_quat.h>
-#  include <igl/C_STR.h>
-#  include <igl/png/render_to_png_async.h>
-#endif
-
-#include <list>
-#include <thread>
 
 extern GLboolean  hasStereo;
 extern int       *pilmat,ipilmat,refmat,reftype,refitem;
@@ -71,7 +59,6 @@ void farclip(GLboolean b) {
       gluPerspective(p->fovy,ratio,sc->dmax,4.0*sc->dmax);
     else
       gluPerspective(p->fovy,ratio,0.01,10000.0*sc->dmax);
-
     units = 1.e-02;
     glPolygonOffset(1.0, units);
     break;
@@ -116,23 +103,6 @@ void reshapeScene(int width,int height) {
 
   glViewport(0,0,width,height);
   farclip(GL_TRUE);
-#ifdef IGL
-  // Tell AntTweakBar about new size
-  TwWindowSize(width, height);
-  // Keep AntTweakBar on right side of screen and height == opengl height
-  // get the current position of a bar
-  int size[2];
-  sc->rebar.TwGetParam(NULL, "size", TW_PARAM_INT32, 2, size);
-  int pos[2];
-  // Place bar on right side of opengl rect (padded by 10 pixels)
-  pos[0] = MEDIT_MAX(10,(int)width - size[0] - 10);
-  // place bar at top (padded by 10 pixels)
-  pos[1] = 10;
-  // Set height to new height of window (padded by 10 pixels on bottom)
-  size[1] = height-pos[1]-10;
-  sc->rebar.TwSetParam( NULL, "position", TW_PARAM_INT32, 2, pos);
-  sc->rebar.TwSetParam( NULL, "size", TW_PARAM_INT32, 2,size);
-#endif
 }
 
 
@@ -156,12 +126,7 @@ static void drawList(pScene sc,int clip,int map) {
   }
   else if ( map ) {
     if ( mesh->nt+mesh->nq ) {
-//#ifdef IGL
-//      // Hack for winding figures to show usual mesh
-//      if ( sc->dlist[LTria] ) glCallList(sc->dlist[LTria]);
-//#else
       if ( sc->mlist[LTria] ) glCallList(sc->mlist[LTria]);
-//#endif
       if ( sc->mlist[LQuad] ) glCallList(sc->mlist[LQuad]);
     }
     else {
@@ -203,7 +168,6 @@ static void displayScene(pScene sc,int mode,int clip) {
   
   map = mode & S_MAP;
 
-
   switch(mode) {
   case FILL:  /* solid fill */
     if ( ddebug ) printf("solid fill\n");
@@ -243,18 +207,12 @@ static void displayScene(pScene sc,int mode,int clip) {
     glDisable(GL_LIGHTING);
     glDisable(GL_COLOR_MATERIAL);
     glEnable(GL_POLYGON_OFFSET_FILL);
-#ifdef IGL
-    if(!sc->igl_params->lines_on_cap && (clip && sc->clip->active & C_CAP)) glDisable(GL_POLYGON_OFFSET_FILL);
-#endif
     glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
     glColor3fv(sc->par.back);
       drawList(sc,clip,0);
     glDisable(GL_POLYGON_OFFSET_FILL);
 #ifdef ppc
     bogusQuad(sc);
-#endif
-#ifdef IGL
-    if(!sc->igl_params->lines_on_cap && (clip && sc->clip->active & C_CAP)) break;
 #endif
     glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
     glColor4fv(sc->par.line);
@@ -267,18 +225,11 @@ static void displayScene(pScene sc,int mode,int clip) {
     glEnable(GL_LIGHTING);
     glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
     glEnable(GL_POLYGON_OFFSET_FILL);
-#ifdef IGL
-    if(!sc->igl_params->lines_on_cap && (clip && sc->clip->active & C_CAP)) glDisable(GL_POLYGON_OFFSET_FILL);
-#endif
       drawList(sc,clip,0);
     glDisable(GL_LIGHTING);
     glDisable(GL_POLYGON_OFFSET_FILL);
 #ifdef ppc
     bogusQuad(sc);
-#endif
-
-#ifdef IGL
-    if(!sc->igl_params->lines_on_cap && (clip && sc->clip->active & C_CAP)) break;
 #endif
     glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
     glColor4fv(sc->par.line);
@@ -288,8 +239,8 @@ static void displayScene(pScene sc,int mode,int clip) {
   case SIZEMAP: /* display metric map */
   case SIZEMAP+S_MATERIAL:
     if ( ddebug ) printf("display sizemap\n");
-    glEnable(GL_LIGHTING);
-    glEnable(GL_COLOR_MATERIAL);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_COLOR_MATERIAL);
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
       drawList(sc,clip,map);
@@ -317,27 +268,16 @@ static void displayScene(pScene sc,int mode,int clip) {
       if ( sc->mode & S_COLOR )  glEnable(GL_LIGHTING);
       glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
       glEnable(GL_POLYGON_OFFSET_FILL);
-#ifdef IGL
-    if(!sc->igl_params->lines_on_cap && (clip && sc->clip->active & C_CAP)) glDisable(GL_POLYGON_OFFSET_FILL);
-#endif
-#ifdef IGL
-      if ( sc->mode & S_MAP && (~(sc->clip->active & C_ON) || clip) ) {
+      if ( sc->mode & S_MAP ) {
         glEnable(GL_COLOR_MATERIAL);
-      }
-#else
-    if ( sc->mode & S_MAP ) {
-      glEnable(GL_COLOR_MATERIAL);
-#endif
-#ifdef IGL
-    if(!sc->igl_params->lines_on_cap && (clip && sc->clip->active & C_CAP)) glDisable(GL_LIGHTING);
-#endif
-	drawList(sc,clip,map);
+      drawList(sc,clip,map);
         glDisable(GL_COLOR_MATERIAL);
       }
       else {
- 	glColor4fv(sc->par.back);
-	drawList(sc,clip,0);
+        glColor4fv(sc->par.back);
+        drawList(sc,clip,0);
       }
+    }
 
     /* boundary */
     glDisable(GL_LIGHTING);
@@ -345,12 +285,6 @@ static void displayScene(pScene sc,int mode,int clip) {
     glDisable(GL_POLYGON_OFFSET_FILL);
 #ifdef ppc
     bogusQuad(sc);
-#endif
-#ifdef IGL
-    if(
-        //(mode==31) // Seems to be data+cap
-        //&&
-        !sc->igl_params->lines_on_cap && (clip && sc->clip->active & C_CAP)) break;
 #endif
     glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
     if ( !(sc->mode & S_BDRY) )  break;
@@ -387,12 +321,13 @@ static void displayData(pScene sc,pMesh mesh) {
 
   /* iso-lines */
   if ( sc->isotyp & S_ISOLINE ) {
-    glLineWidth(1.0);
+    glLineWidth(sc->par.isowidth);
     if ( sc->ilist[LTria] )  glCallList(sc->ilist[LTria]);
     if ( sc->ilist[LQuad] )  glCallList(sc->ilist[LQuad]);
     glDisable(GL_CLIP_PLANE0);
     if ( sc->ilist[LTets] && sc->clip->active & C_ON )
       glCallList(sc->ilist[LTets]);
+    glLineWidth(1);
   }
 
   /* vector field */
@@ -485,39 +420,11 @@ void setupView(pScene sc) {
   glLoadIdentity();
   if ( p->pmode != CAMERA ) {
     glTranslatef(view->panx,view->pany,0.0);
-    if(ddebug)
-    {
-      printf("%g %g %g\n", -view->panx,-view->pany,0.);
-    }
     if ( mesh->dim == 3 || sc->mode & S_ALTITUDE )
-    {
       glRotatef(view->angle,view->axis[0],view->axis[1],view->axis[2]);
-      if(ddebug)
-      {
-        printf("%g, %g %g %g\n",
-            view->angle,view->axis[0],view->axis[1],view->axis[2]);
-      }
-    }
     glTranslatef(-view->opanx,-view->opany,0.);
-    if(ddebug)
-    {
-      printf("%g %g %g\n",
-          -view->opanx,-view->opany,0.);
-    }
     glMultMatrixf(view->matrix);
     glGetFloatv(GL_MODELVIEW_MATRIX,view->matrix);
-    if(ddebug)
-    {
-      int i,j;
-      for(i = 0;i<4;i++)
-      {
-        for(j = 0;j<4;j++)
-        {
-          printf("%g ",view->matrix[i+4*j]);
-        }
-        printf("\n");
-      }
-    }
   }
   else if ( animate ) {
     c->eye[0] += c->spmod*c->speed[0];
@@ -556,68 +463,16 @@ void drawModel(pScene sc) {
   view = sc->view;
   clip = sc->clip;
   if ( ddebug ) printf("\n-- redraw scene %d, mesh %d\n",sc->idwin,sc->idmesh);
-
-#ifdef IGL
-  const bool hot_dog_view = sc->igl_params->hot_dog_view;
-  const double width = sc->igl_params->width(mesh);
-  const double hot_dog_ratio = sc->igl_params->hot_dog_ratio;
-  int eff_slices = 1;
-  if(hot_dog_view)
-  {
-    eff_slices = sc->igl_params->num_hot_dog_slices+1;
-  }
-  for(int h = 0; h < eff_slices ;h+=2)
-  {
-#endif
-
   glDisable(GL_LIGHTING);
 
   /* draw clipping plane */
   if ( clip->active & C_ON ) {
-#ifdef IGL
-    if(hot_dog_view)
-    {
-      drawClip(sc,clip,mesh,0);
-      // first clipping plane
-      GLdouble eqn1[4];
-      for(int c = 0;c<3;c++) eqn1[c] = clip->eqn[c];
-      eqn1[3] = clip->eqn[3] + width*h;
-      
-      glClipPlane(GL_CLIP_PLANE0,eqn1);
-      glEnable(GL_CLIP_PLANE0);
-
-      // second clipping plane
-      if(h>0)
-      {
-        GLdouble eqn2[4];
-        for(int c = 0;c<3;c++) eqn2[c] = -clip->eqn[c];
-        eqn2[3] = -clip->eqn[3] - width*(h) + (1.-hot_dog_ratio)*width*2;
-        //eqn2[3] = -clip->eqn[3] - width*(h-1);
-
-        glClipPlane(GL_CLIP_PLANE1,eqn2);
-        glEnable(GL_CLIP_PLANE1);
-      }else
-      {
-        glDisable(GL_CLIP_PLANE1);
-      }
-
-    }else
-    {
-#endif
     drawClip(sc,clip,mesh,0);
     glClipPlane(GL_CLIP_PLANE0,clip->eqn);
     glEnable(GL_CLIP_PLANE0);
-#ifdef IGL
-    }
-#endif
   }
   else
-  {
-#ifdef IGL
-    glDisable(GL_CLIP_PLANE1);
-#endif
     glDisable(GL_CLIP_PLANE0);
-  }
 
   /* draw object if static scene */
   sstatic = view->mstate > 0 && clip->cliptr->mstate > 0;
@@ -645,17 +500,9 @@ void drawModel(pScene sc) {
     glDisable(GL_COLOR_MATERIAL);
     glCallList(sc->glist);
   }
-#ifdef IGL
-  }
-  glDisable(GL_CLIP_PLANE1);
-#endif
 
   glDisable(GL_CLIP_PLANE0);
-#if IGL
-  if ( sc->item & S_BOX )
-#else
   if ( clip->active & C_EDIT || sc->item & S_BOX )
-#endif
     drawBox(sc,mesh,0);
   if ( sc->item & S_AXIS )
     drawAxis(sc,mesh->dim);
@@ -663,11 +510,6 @@ void drawModel(pScene sc) {
     drawBase(sc,mesh);
   if ( sc->cube->active & C_ON )
     drawCube(sc,mesh);
-
-  //glColorMask(false, false, false, true);//This ensures that only alpha will be effected
-  //glClearColor(0, 0, 0, 1);//alphaValue - Value to which you need to clear
-  //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  //glColorMask(true, true, true, true);//This ensures that only alpha will be effected
 
   sstatic |= tiling;
   if ( sstatic && clip->active & C_ON && clip->active & C_VOL )
@@ -678,7 +520,7 @@ void drawModel(pScene sc) {
     glEnable(GL_COLOR_MATERIAL);
     glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
     glDisable(GL_POLYGON_OFFSET_FILL);
-      glCallList(sc->picklist);
+    glCallList(sc->picklist);
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
     glDisable(GL_COLOR_MATERIAL);
@@ -728,7 +570,7 @@ void streamIdle(void) {
   sc->par.cumtim += sc->par.dt;
   sc->par.advtim  = 1;
   if ( sc->par.cumtim > sc->par.maxtime ) {
-    sc->par.cumtim     = 0.0;
+    sc->par.cumtim     = sc->par.timdep;
     sc->par.cumpertime = 0.0;
     saveimg = 0;
     sc->isotyp &= ~S_PARTICLE;
@@ -791,7 +633,7 @@ void redrawScene() {
   if ( stereoMode == MONO || !hasStereo ) {
     glDrawBuffer(GL_BACK_LEFT);
     glClearColor(sc->par.back[0],sc->par.back[1],
-                 sc->par.back[2],0);
+                 sc->par.back[2],sc->par.back[3]);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glMatrixMode(GL_MODELVIEW);
@@ -860,38 +702,12 @@ void redrawScene() {
     drawModel(sc);
     if ( sc->type & S_DECO )  redrawStatusBar(sc);
   }
-#ifdef IGL
-  if(sc->igl_params->render_on_next)
-  {
-    char path[1024];
-    pMesh mesh;
-    mesh = cv.mesh[sc->idmesh];
-    strcpy(path,mesh->name);
-    static int numdep = 0;
-#define PNG "png"
-    numdep = filnum(path,numdep,PNG);
-    if ( numdep == -1)
-    {
-      glClearColor(1,0,0,1);
-      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    }else
-    {
-      sprintf(path,"%s.%.3d." PNG,path,numdep);
-      static std::list<std::thread> thread_list;
-      thread_list.push_back(igl::png::render_to_png_async(std::string(path),sc->par.xs,sc->par.ys,true,false));
-    }
-    sc->igl_params->render_on_next = false;
-  }
-  TwDraw();
-#endif
 
   /* refresh screen */
   if ( saveimg && animate )
     glFlush();
   else
     glutSwapBuffers();
-
-  if ( ddebug ) checkErrors();
 
   if ( saveimg && !(sc->type & S_SCISSOR) )  keyFile('H',0,0);
 
@@ -926,14 +742,8 @@ void redrawSchnauzer() {
 
 
 void deleteScene(pScene sc) {
-  // Alec: This isn't actually called on exit
   /* default */
   if ( ddebug) printf("deleteScene\n");
-
-  // try to save rebar
-#ifdef IGL
-  sc->rebar.save("rebar.rbr");
-#endif
 
   M_free(sc->view);
   M_free(sc->clip);
@@ -944,599 +754,6 @@ void deleteScene(pScene sc) {
   M_free(sc);
 }
 
-#ifdef IGL
-void initIGL(pScene sc,pMesh mesh)
-{
-  sc->igl_params = new IGLParams();
-}
-
-// No-op setter, does nothing
-void TW_CALL no_op(const void *value, void *clientData){}
-// No-op getter, does nothing
-void TW_CALL no_op(void *value, void *clientData){}
-
-// Snap XY plane
-void TW_CALL view_xy_plane(void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  float mat[16];
-  igl::quat_to_mat( igl::XY_PLANE_QUAT_F, mat);
-  // Copy 3x3 linear block
-  for(int i = 0;i<3;i++)
-    for(int j = 0;j<3;j++)
-      sc->view->matrix[i*4+j] = mat[i*4+j];
-}
-// Snap XZ plane
-void TW_CALL view_xz_plane(void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  float mat[16];
-  igl::quat_to_mat( igl::XZ_PLANE_QUAT_F, mat);
-  // Copy 3x3 linear block
-  for(int i = 0;i<3;i++)
-    for(int j = 0;j<3;j++)
-      sc->view->matrix[i*4+j] = mat[i*4+j];
-}
-// Snap YZ plane
-void TW_CALL view_yz_plane(void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  float mat[16];
-  igl::quat_to_mat( igl::YZ_PLANE_QUAT_F, mat);
-  // Copy 3x3 linear block
-  for(int i = 0;i<3;i++)
-    for(int j = 0;j<3;j++)
-      sc->view->matrix[i*4+j] = mat[i*4+j];
-}
-void TW_CALL snap_rotation_to_canonical_view_quat(void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  float q[4];
-  igl::mat4_to_quat(sc->view->matrix,q);
-  igl::snap_to_canonical_view_quat<float>(q,1.0,q);
-  float mat[16];
-  igl::quat_to_mat(q, mat);
-  // Copy 3x3 linear block
-  for(int i = 0;i<3;i++)
-    for(int j = 0;j<3;j++)
-      sc->view->matrix[i*4+j] = mat[i*4+j];
-}
-void TW_CALL set_rotation(const void *value, void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  const float * q = (const float*)(value);
-  float mat[16];
-  igl::quat_to_mat(q, mat);
-  // Copy 3x3 linear block
-  for(int i = 0;i<3;i++)
-    for(int j = 0;j<3;j++)
-      sc->view->matrix[i*4+j] = mat[i*4+j];
-}
-void TW_CALL get_rotation(void *value, void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  float * q = (float *)(value);
-  igl::mat4_to_quat(sc->view->matrix,q);
-}
-
-// Update clip after it changed
-void update_clip(pScene sc)
-{
-  if ( sc->clip->active & C_ON )
-    sc->clip->active |= C_UPDATE;
-}
-// Snap XY plane
-void TW_CALL clip_xy_plane(void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  float mat[16];
-  igl::quat_to_mat( igl::CANONICAL_VIEW_QUAT_F[5], mat);
-  // Copy 3x3 linear block
-  for(int i = 0;i<3;i++)
-    for(int j = 0;j<3;j++)
-      sc->clip->cliptr->rot[i*4+j] = mat[i*4+j];
-  update_clip(sc);
-}
-// Snap XZ plane
-void TW_CALL clip_xz_plane(void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  float mat[16];
-  igl::quat_to_mat( igl::XZ_PLANE_QUAT_F, mat);
-  // Copy 3x3 linear block
-  for(int i = 0;i<3;i++)
-    for(int j = 0;j<3;j++)
-      sc->clip->cliptr->rot[i*4+j] = mat[i*4+j];
-  update_clip(sc);
-}
-// Snap YZ plane
-void TW_CALL clip_yz_plane(void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  float mat[16];
-  igl::quat_to_mat( igl::YZ_PLANE_QUAT_F, mat);
-  // Copy 3x3 linear block
-  for(int i = 0;i<3;i++)
-    for(int j = 0;j<3;j++)
-      sc->clip->cliptr->rot[i*4+j] = mat[i*4+j];
-  update_clip(sc);
-}
-void TW_CALL snap_rotation_to_canonical_clip_quat(void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  float q[4];
-  igl::mat4_to_quat(sc->clip->cliptr->rot,q);
-  igl::snap_to_canonical_view_quat<float>(q,1.0,q);
-  float mat[16];
-  igl::quat_to_mat(q, mat);
-  // Copy 3x3 linear block
-  for(int i = 0;i<3;i++)
-    for(int j = 0;j<3;j++)
-      sc->clip->cliptr->rot[i*4+j] = mat[i*4+j];
-  update_clip(sc);
-}
-
-void TW_CALL set_clip_rotation(const void *value, void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  const float * q = (const float*)(value);
-  float mat[16];
-  igl::quat_to_mat(q, mat);
-  // Copy 3x3 linear block
-  for(int i = 0;i<3;i++)
-    for(int j = 0;j<3;j++)
-      sc->clip->cliptr->rot[i*4+j] = mat[i*4+j];
-  update_clip(sc);
-}
-void TW_CALL get_clip_rotation(void *value, void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  float * q = (float *)(value);
-  igl::mat4_to_quat(sc->clip->cliptr->rot,q);
-}
-void TW_CALL set_clip_tra12(const void *value, void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  const float * tra12 = (const float*)(value);
-  sc->clip->cliptr->tra[12] = tra12[0];
-  sc->clip->cliptr->tra[12] = tra12[1];
-  sc->clip->cliptr->tra[13] = tra12[2];
-  update_clip(sc);
-}
-void TW_CALL get_clip_tra12(void *value, void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  float * tra12 = (float *)(value);
-  tra12[0] = sc->clip->cliptr->tra[12];
-  tra12[1] = sc->clip->cliptr->tra[12];
-  tra12[2] = sc->clip->cliptr->tra[13];
-}
-
-void TW_CALL invert_clip(void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  invertClip(sc,sc->clip);
-  sc->clip->active |= C_REDO;
-}
-
-void TW_CALL set_hot_dog_view(const void *value, void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  sc->igl_params->hot_dog_view = *(const bool*)(value);
-  printf("set_hot_dog_view\n");
-  sc->clip->active |= C_REDO;
-}
-void TW_CALL get_hot_dog_view(void *value, void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  *(bool *)(value) = sc->igl_params->hot_dog_view;
-  sc->clip->active |= C_REDO;
-}
-
-void TW_CALL set_num_hot_dog_slices(const void *value, void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  sc->igl_params->num_hot_dog_slices = *(const int*)(value);
-  sc->clip->active |= C_REDO;
-}
-void TW_CALL get_num_hot_dog_slices(void *value, void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  *(int *)(value) = sc->igl_params->num_hot_dog_slices;
-  sc->clip->active |= C_REDO;
-}
-
-void TW_CALL set_hot_dog_ratio(const void *value, void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  sc->igl_params->hot_dog_ratio = *(const double*)(value);
-  sc->clip->active |= C_REDO;
-}
-void TW_CALL get_hot_dog_ratio(void *value, void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  *(double *)(value) = sc->igl_params->hot_dog_ratio;
-  sc->clip->active |= C_REDO;
-}
-
-void TW_CALL set_C_HIDE(const void *value, void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  bool v = *(const bool*)(value);
-  if(v != (0!=(sc->clip->active & C_HIDE)))
-  {
-    sc->clip->active ^= C_HIDE;
-  }
-}
-void TW_CALL get_C_HIDE(void *value, void *clientData)
-{
-  pScene sc = static_cast<const pScene>(clientData);
-  *(bool *)(value) = sc->clip->active & C_HIDE;
-}
-
-void initAntTweakBar(pScene sc,pMesh mesh)
-{
-  using namespace igl::anttweakbar;
-  printf("initAntTweakBar\n");
-  TwInit(TW_OPENGL, NULL);
-  sc->rebar.TwNewBar("bar");
-  TwDefine("bar label='Release' size='200 550' text=light alpha='200' color='68 68 68'");
-  TwGLUTModifiersFunc(glutGetModifiers);
-
-  sc->rebar.TwAddVarRW(
-    "camera_eye",
-    TW_TYPE_DIR3F,
-    sc->camera->eye,
-    "group='View' ");
-  sc->rebar.TwAddVarRW(
-    "back",
-    TW_TYPE_COLOR4F,
-    sc->par.back,
-    "group='View' "
-    "label='background color' "
-    "open "
-    "colormode=hls ");
-  sc->rebar.TwAddVarRW(
-    "line",
-    TW_TYPE_COLOR4F,
-    sc->par.line,
-    "group='View' "
-    "label='line color' "
-    "open "
-    "colormode=hls ");
-
-  sc->rebar.TwAddVarRW(
-    "lines_on_cap",
-    TW_TYPE_BOOLCPP,
-    &(sc->igl_params->lines_on_cap),
-    "group='View' "
-    "help='Display lines on cap when showing lines' ");
-
-  sc->rebar.TwAddVarCB(
-    "hot_dog_view",
-    TW_TYPE_BOOLCPP,
-    set_hot_dog_view,
-    get_hot_dog_view,
-    sc,
-    "group='View' "
-    "key=H "
-    "help='Display many evenly spaced cuts' ");
-
-  sc->rebar.TwAddVarCB(
-    "num_hot_dog_slices",
-    TW_TYPE_INT32,
-    set_num_hot_dog_slices,
-    get_num_hot_dog_slices,
-    sc,
-    C_STR("group='View' "
-    "min=1 max="<<MAX_HOT_DOG_SLICES<<" step=1"
-    "help='number of hot_dog_slices' "));
-
-  sc->rebar.TwAddVarCB(
-    "hot_dog_ratio",
-    TW_TYPE_DOUBLE,
-    set_hot_dog_ratio,
-    get_hot_dog_ratio,
-    sc,
-    "group='View' "
-    "min=0 max=1 step=0.1"
-    "help='ratio of in to out hot dog slice sizes' ");
-
-  sc->rebar.TwAddButton(
-    "view_xy",
-    view_xy_plane,
-    sc,
-    "group='View' "
-    "key='z' "
-    "help='Set view rotation to view xy plane' ");
-  sc->rebar.TwAddButton(
-    "view_xz",
-    view_xz_plane,
-    sc,
-    "group='View' "
-    "key='y' "
-    "help='Set view rotation to view xz plane' ");
-  sc->rebar.TwAddButton(
-    "view_yz",
-    view_yz_plane,
-    sc,
-    "group='View' "
-    "key='x' "
-    "help='Set view rotation to view yz plane' ");
-  sc->rebar.TwAddButton(
-    "snap",
-    snap_rotation_to_canonical_view_quat,
-    sc,
-    "group='View' "
-    "key='Z' "
-    "help='Snap view rotation to nearest canonical view' ");
-  sc->rebar.TwAddVarCB(
-    "rotation",
-    TW_TYPE_QUAT4F,
-    set_rotation,
-    get_rotation,
-    sc,
-    "group='View' open ");
-  sc->rebar.TwAddVarRW(
-    "fov_y",
-    TW_TYPE_FLOAT,
-    &(sc->persp->fovy),
-    "group='View' readonly=true");
-
-  sc->rebar.TwAddVarRW(
-    "open_color",
-    TW_TYPE_COLOR3F,
-    &(sc->igl_params->open_color),
-    "group=View "
-    "help='Color of open boundaries.' colormode=hls");
-
-  sc->rebar.TwAddVarRW(
-    "line_width",
-    TW_TYPE_FLOAT,
-    &(sc->par.linewidth),
-    "group=View "
-    "help='Width of lines.' ");
-
-  sc->rebar.TwAddVarRW(
-    "dot_size",
-    TW_TYPE_FLOAT,
-    &(sc->igl_params->dot_size),
-    "group=View "
-    "help='size of dots.' ");
-
-  sc->rebar.TwAddVarRW(
-    "nme_color",
-    TW_TYPE_COLOR3F,
-    &(sc->igl_params->nme_color),
-    "group=View "
-    "help='Color of nonmanifold edges.' colormode=hls");
-
-  sc->rebar.TwAddVarRW(
-    "tet_color",
-    TW_TYPE_COLOR4F,
-    &(sc->igl_params->tet_color),
-    "group=View "
-    "help='Color of tets.' colormode=hls");
-
-  sc->rebar.TwAddVarRW(
-    "fade_flip",
-    TW_TYPE_BOOLCPP,
-    &(sc->igl_params->fade_flip),
-    "group=Fade ");
-  sc->rebar.TwAddVarRW(
-    "fade_max_s",
-    TW_TYPE_DOUBLE,
-    &(sc->igl_params->fade_max_s),
-    "step=0.01 max=1 min=0 group=Fade ");
-  sc->rebar.TwAddVarRW(
-    "fade_min_s",
-    TW_TYPE_DOUBLE,
-    &(sc->igl_params->fade_min_s),
-    "step=0.01 max=1 min=0 group=Fade ");
-  sc->rebar.TwAddVarRW(
-    "fade_max_v",
-    TW_TYPE_DOUBLE,
-    &(sc->igl_params->fade_max_v),
-    "step=0.01 max=1 min=0 group=Fade ");
-  sc->rebar.TwAddVarRW(
-    "fade_min_v",
-    TW_TYPE_DOUBLE,
-    &(sc->igl_params->fade_min_v),
-    "step=0.01 max=1 min=0 group=Fade ");
-
-  TwEnumVal ColorMapTypeEV[NUM_COLOR_MAP] = 
-  {
-    {COLOR_MAP_DEFAULT,"DEFAULT"},
-    {COLOR_MAP_JET,"JET"},
-    {COLOR_MAP_EASTER,"EASTER"},
-    {COLOR_MAP_WINDING_THEN_EASTER,"WN_EASTER"},
-    {COLOR_MAP_PARULA,"PARULA"},
-  };
-  TwType ColorMapTypeTW = 
-    igl::anttweakbar::ReTwDefineEnum(
-      "ColorMapType", 
-      ColorMapTypeEV, 
-      NUM_COLOR_MAP);
-  sc->rebar.TwAddVarRW(
-    "color_map",
-    ColorMapTypeTW,
-    &(sc->igl_params->color_map),
-    "group=View "
-    "keydecr='<' keyincr='>' "
-    "help='Colormap for data vis.' ");
-  sc->rebar.TwAddVarRW(
-    "easter_red",
-    TW_TYPE_COLOR3F,
-    &(sc->igl_params->easter_red),
-    "group=View "
-    "help='Colormap easter hsv for red.' colormode=hls");
-  //sc->rebar.TwAddVarRW(
-  //  "easter_s",
-  //  TW_TYPE_DOUBLE,
-  //  &(sc->igl_params->easter_s),
-  //  "group=View "
-  //  "help='Colormap easter hsv for red.' colormode=hls");
-  //sc->rebar.TwAddVarRW(
-  //  "easter_v",
-  //  TW_TYPE_DOUBLE,
-  //  &(sc->igl_params->easter_v),
-  //  "group=View "
-  //  "help='Colormap easter hsv for red.' ");
-
-  sc->rebar.TwAddButton(
-    "clip_xy",
-    clip_xy_plane,
-    sc,
-    "group='Clip' "
-    "key='ALT+x' "
-    "help='Set clip rotation to clip xy plane' ");
-  sc->rebar.TwAddButton(
-    "clip_xz",
-    clip_xz_plane,
-    sc,
-    "group='Clip' "
-    "key='ALT+z' "
-    "help='Set clip rotation to clip xz plane' ");
-  sc->rebar.TwAddButton(
-    "clip_yz",
-    clip_yz_plane,
-    sc,
-    "group='Clip' "
-    "key='ALT+y' "
-    "help='Set clip rotation to clip yz plane' ");
-  sc->rebar.TwAddButton(
-    "invert_clip",
-    invert_clip,
-    sc,
-    "group='Clip' "
-    "key='I' "
-    "help='invert clip direction' ");
-  sc->rebar.TwAddVarCB(
-    "clip_rotation",
-    TW_TYPE_QUAT4F,
-    set_clip_rotation,
-    get_clip_rotation,
-    sc,
-    "group='Clip' ");
-  sc->rebar.TwAddButton(
-    "clip_snap",
-    snap_rotation_to_canonical_clip_quat,
-    sc,
-    "group='Clip' "
-    "key='ALT+Z' "
-    "help='Snap clip rotation to nearest canonical view' ");
-  sc->rebar.TwAddVarCB(
-    "clip_tra12",
-    TW_TYPE_DIR3F,
-    set_clip_tra12,
-    get_clip_tra12,
-    sc,
-    "help='Translation component of clip (dont touch)' "
-    "group='Clip' readonly=true");
-  sc->rebar.TwAddVarCB(
-    "clip_C_HIDE",
-    TW_TYPE_BOOLCPP,
-    set_C_HIDE,
-    get_C_HIDE,
-    sc,
-    "help='Hide clipping plane ' "
-    "key='P' "
-    "group='Clip' ");
-
-
-  sc->rebar.TwAddVarRW(
-    "mat_amb",
-    TW_TYPE_COLOR4F,
-    sc->material->amb,
-    "group='Material' "
-    "label='Ambient' "
-    "colormode=hls ");
-
-  //sc->rebar.TwAddVarRW(
-  //  "mat_emi",
-  //  TW_TYPE_COLOR4F,
-  //  sc->material->emi,
-  //  "group='Material (double-tap e)' "
-  //  "label='Emission' "
-  //  "colormode=hls ");
-
-  sc->rebar.TwAddVarRW(
-    "mat_dif",
-    TW_TYPE_COLOR4F,
-    sc->material->dif,
-    "group='Material (double-tap e)' "
-    "label='Diffuse' "
-    "colormode=hls ");
-
-  sc->rebar.TwAddVarRW(
-    "mat_spe",
-    TW_TYPE_COLOR4F,
-    sc->material->spe,
-    "group='Material (double-tap e)' "
-    "label='Specular' "
-    "colormode=hls ");
-
-  sc->rebar.TwAddVarRW(
-    "mat_shininess",
-    TW_TYPE_FLOAT,
-    &(sc->material->shininess),
-    "group='Material (double-tap e)' "
-    "label='shininess' ");
-
-  sc->rebar.TwAddVarRW(
-    "scene_type",
-    TW_TYPE_UINT8,
-    &(sc->type),
-    "group='Scene' "
-    "readonly=true "
-    "label='type' ");
-
-  sc->rebar.TwAddVarRW(
-    "scene_mode",
-    TW_TYPE_UINT8,
-    &(sc->mode),
-    "group='Scene' "
-    "readonly=true "
-    "label='mode' ");
-
-  sc->rebar.TwAddVarRW(
-    "clip",
-    TW_TYPE_UINT8,
-    &(sc->clip->active),
-    "group='Scene' "
-    "readonly=true "
-    "label='clip->active' ");
-
-  sc->rebar.TwAddVarRW(
-    "render_on_C_UPDATE",
-    TW_TYPE_BOOLCPP,
-    &(sc->igl_params->render_on_C_UPDATE),
-    "group='Render' "
-    "help='Write a png screenshot each time the clip is moved' ",
-    false
-    );
-
-  // Try to load previous bar
-  if(!sc->rebar.load("rebar.rbr"))
-  {
-    fprintf(stderr,"Error: could not reload rebar.rbr\n");
-  }else
-  {
-    // Redo clipping to get proper clip
-    ubyte old_ca = sc->clip->active;
-    sc->clip->active |= C_REDO;
-    sc->clip->active |= C_UPDATE;
-    sc->clip->active |= C_EDIT;
-    updateClip(sc->clip,mesh);
-    sc->clip->active = old_ca;
-
-    // Recompile lists to get proper colors
-    doLists(sc,mesh);
-    doMapLists(sc,mesh,true);
-  }
-}
-#endif
-
 
 void initGrafix(pScene sc,pMesh mesh) {
   GLfloat  lightamb[4] = { 0.3, 0.3, 0.3, 1.0 };
@@ -1545,8 +762,7 @@ void initGrafix(pScene sc,pMesh mesh) {
 
   if ( ddebug )  printf("initGrafix\n");
   glEnable(GL_DEPTH_TEST);
-  //glDepthFunc(GL_LEQUAL);
-  glDepthFunc(GL_LESS);
+  glDepthFunc(GL_LEQUAL);
   glPolygonOffset(1.0, 1.0 / (float)0x10000);
   glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
 
@@ -1616,11 +832,11 @@ int createScene(pScene sc,int idmesh) {
 
   /* compute scene depth */
   sc->dmax = sc->dmin= mesh->xmax - mesh->xmin;
-  sc->dmax = MEDIT_MAX(sc->dmax,mesh->ymax - mesh->ymin);
-  sc->dmin = MEDIT_MIN(sc->dmin,mesh->ymax - mesh->ymin);
+  sc->dmax = max(sc->dmax,mesh->ymax - mesh->ymin);
+  sc->dmin = min(sc->dmin,mesh->ymax - mesh->ymin);
   if ( mesh->dim == 3 ) {
-    sc->dmax = MEDIT_MAX(sc->dmax,mesh->zmax - mesh->zmin);
-    sc->dmin = MEDIT_MIN(sc->dmin,mesh->zmax - mesh->zmin);
+    sc->dmax = max(sc->dmax,mesh->zmax - mesh->zmin);
+    sc->dmin = min(sc->dmin,mesh->zmax - mesh->zmin);
   }
   sc->dmax = fabs(sc->dmax);
   sc->dmin = fabs(sc->dmin);
@@ -1633,7 +849,6 @@ int createScene(pScene sc,int idmesh) {
 
   /* create window */
   glutInitWindowSize(sc->par.xs,sc->par.ys);
-  glutInitWindowPosition(sc->par.pxs,sc->par.pys);
   sc->idwin = glutCreateWindow("");
   assert(sc->idwin != 0);
   if ( fullscreen ) {
@@ -1649,7 +864,7 @@ int createScene(pScene sc,int idmesh) {
  
  /* required! to change background color */
   glClearColor(sc->par.back[0],sc->par.back[1],
-               sc->par.back[2],0);
+               sc->par.back[2],sc->par.back[3]);
 
   /* init perspective */
   sc->persp  = initPersp(0,sc->dmax);
@@ -1686,20 +901,15 @@ int createScene(pScene sc,int idmesh) {
     glutMotionFunc(motion);
     glutDisplayFunc(redrawScene);
   }
-#ifdef IGL
-  glutPassiveMotionFunc(passive_motion); // same as MouseMotion
-#endif
   glutReshapeFunc(reshapeScene);
   glutKeyboardFunc(keyScene);
   glutSpecialFunc(special);
   glutAttachMenu(GLUT_RIGHT_BUTTON);
 
-#ifndef IGL
   /* create display lists by geom type */
   glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
   doLists(sc,mesh);
   sc->glist = geomList(sc,mesh);
-#endif
   sc->type |= S_FOLLOW;
 
   /* local stack */
@@ -1713,16 +923,5 @@ int createScene(pScene sc,int idmesh) {
   sc->stream = NULL;
 
   initGrafix(sc,mesh);
-#ifdef IGL
-  initIGL(sc,mesh);
-  initAntTweakBar(sc,mesh);
-#endif
-
-#ifdef IGL
-  /* create display lists by geom type */
-  glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
-  doLists(sc,mesh);
-#endif
-
   return(1);
 }

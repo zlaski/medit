@@ -23,28 +23,6 @@ int       rxi,ryi,rx1,rx2,ry1,ry2;
 #define GLUT_BUTTON_4   3
 #endif
 
-// Patch for machines without a middle mouse button. Interprets
-// CTRL+ALT+LEFT_CLICK and ALT+RIGHT_CLICK as a MIDDLE_CLICK
-//
-// Input:
-//   button  current button value
-// Output:
-//   button  new button value
-//   
-int alt_ctrl_left_to_middle(const int button)
-{
-#ifdef __APPLE__
-  int keyact = glutGetModifiers();
-  if (keyact & GLUT_ACTIVE_ALT && 
-    ((keyact & GLUT_ACTIVE_CTRL && button == GLUT_LEFT_BUTTON) || 
-    button == GLUT_RIGHT_BUTTON))
-  {
-    return GLUT_MIDDLE_BUTTON;
-  }
-#endif
-  return button;
-}
-
 /* project x,y, onto a hemi-sphere */
 static void point2Vect(int x,int y,int w,int h,float *v) {
   double   d,a,areax,areay;
@@ -139,10 +117,10 @@ void zoomMotion(int x,int y) {
     if ( p->fovy < 1.0e-02 )  
       return;
     else 
-      p->fovy = MEDIT_MAX(0.95*p->fovy,1e-05);
+      p->fovy = max(0.95*p->fovy,1e-05);
   else if ( p->fovy > 160.0 )  return;
   else
-    p->fovy = MEDIT_MIN(1.1*p->fovy,179.0);
+    p->fovy = min(1.1*p->fovy,179.0);
 
   farclip(1);
   starty = y;
@@ -151,19 +129,13 @@ void zoomMotion(int x,int y) {
 
 
 void mouse(int button,int state,int x,int y) {
-  button = alt_ctrl_left_to_middle(button);
   pScene      sc;
   pTransform  tr;
   pPersp      p;
   int         keyact,idw = currentScene();
   static int  olds = -1;
-#ifdef IGL
-  // Tweakbar has precedence over everything else
-  if(TwEventMouseButtonGLUT(button,state,x,y) && state == GLUT_DOWN)
-  {
-    return;
-  }
-#endif
+  
+  picking=GL_FALSE;
 
   /* default */
   if ( ddebug ) printf("control mouse %d\n",state);
@@ -182,8 +154,6 @@ void mouse(int button,int state,int x,int y) {
   keyact = glutGetModifiers();
 
   if ( state == GLUT_DOWN ) {
-  
-  picking=GL_FALSE;
     tracking = GL_TRUE;
     lasttime = glutGet(GLUT_ELAPSED_TIME);
 
@@ -279,17 +249,6 @@ void mouse(int button,int state,int x,int y) {
   olds = idw;
 }
 
-#ifdef IGL
-void passive_motion(int x,int y)
-{
-  // Tweakbar has precedence over everything else
-  if(TwEventMouseMotionGLUT(x,y))
-  {
-    glutPostRedisplay();
-  }
-}
-#endif
-
 void motion(int x,int y) {
   pScene      sc;
   pTransform  tr;
@@ -302,17 +261,6 @@ void motion(int x,int y) {
   /* default */
   if ( picking )  return;
   if ( ddebug ) fprintf(stdout,"motion\n");
-
-#ifdef IGL
-  // Tweakbar has precedence over everything else
-  if(TwEventMouseMotionGLUT(x,y))
-  {
-    if(!tracking)
-    {
-      glutPostRedisplay();
-    }
-  }
-#endif
 
   if ( tracking == GL_FALSE )  return;
   sc = cv.scene[idw];
@@ -392,7 +340,6 @@ void motion(int x,int y) {
 void mouseCamera(int button,int state,int x,int y) {
   /* default */
   if ( ddebug ) printf("control mouse camera %d button %d\n",state,button);
-  button = alt_ctrl_left_to_middle(button);
 
   cbutton = button;
   if ( state == GLUT_DOWN ) {

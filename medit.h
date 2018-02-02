@@ -12,10 +12,10 @@
 #include <signal.h>
 #include <ctype.h>
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
-#endif
-#ifdef __APPLE__
+#include "freeglut/include/GL/freeglut.h"
+#elif defined(__APPLE__)
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
 #include <GLUT/glut.h>
@@ -46,14 +46,8 @@
 
 #define DTOR       0.0174532925
 #define RTOD      57.29577951308232
-// Alec: This is also a shitty thing to do
-#ifdef IGL
-const double EPS  = 1.e-06;
-const double EPS2 = 2.e-10;
-#else
 #define EPS            1.e-06
 #define EPS2           2.e-10
-#endif
 
 #ifndef  TRUE
 #define  TRUE   1
@@ -66,16 +60,12 @@ const double EPS2 = 2.e-10;
 #define M_PI            3.14159265358979323846   /* pi   */
 #define M_PI_2          1.57079632679489661923   /* pi/2 */
 
-
-// Alec: THIS IS SUCH A HORRIBLE IDEA
-//#ifdef min
-//#undef min
-//#undef max
-//#endif
-//#define  min(a,b)       ( ((a) < (b)) ? (a) : (b) )
-//#define  max(a,b)       ( ((b) > (a)) ? (b) : (a) )
-#define  MEDIT_MIN(a,b)       ( ((a) < (b)) ? (a) : (b) )
-#define  MEDIT_MAX(a,b)       ( ((b) > (a)) ? (b) : (a) )
+#ifdef min
+#undef min
+#undef max
+#endif
+#define  min(a,b)       ( ((a) < (b)) ? (a) : (b) )
+#define  max(a,b)       ( ((b) > (a)) ? (b) : (a) )
 
 /* check if numbers are equal */ 
 #define egal(x,y)   ( \
@@ -83,6 +73,8 @@ const double EPS2 = 2.e-10;
    ( ((y) == 0.0f) ? (fabs(x) < EPS) : \
      (fabs((x)-(y)) / (fabs(x) + fabs(y)) < EPS2) )  ) )
 
+#define  MEDIT_MIN(a,b)       ( ((a) < (b)) ? (a) : (b) )
+#define  MEDIT_MAX(a,b)       ( ((b) > (a)) ? (b) : (a) )
 
 /* options */
 enum { STANDARD=1, SEQUENCE, VERYBIG, MORPHING, SCHNAUZER, ISOSURF, PARTICLE};

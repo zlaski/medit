@@ -151,18 +151,11 @@ typedef struct
 /*----------------------------------------------------------*/
 /* External tables and procedures							*/
 /*----------------------------------------------------------*/
-#ifdef __cplusplus
-extern "C" {
-#endif
-    
-extern int LM_open_mesh(const char *, int, LM_mesh_struct *, ...);
+
+extern int LM_open_mesh(char *, int, LM_mesh_struct *, ...);
 extern int LM_read_field(LM_mesh_struct *, int, int, void *);
 extern int LM_write_field(LM_mesh_struct *, int, int, void *, ...);
 extern int LM_read_line(LM_mesh_struct *, int, ...);
 extern int LM_write_line(LM_mesh_struct *, int, ...);
 extern int LM_close_mesh(LM_mesh_struct *);
 extern char *LM_kw_table[][3];
-#ifdef __cplusplus
-}
-#endif
-    

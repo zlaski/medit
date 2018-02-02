@@ -34,12 +34,6 @@ void doLists(pScene sc,pMesh mesh) {
   if ( sc->clip->active & C_VOL )  sc->clip->active |= C_REDO;
   glutSetCursor(GLUT_CURSOR_INHERIT);
   checkErrors();
-
-#ifdef IGL
-  /* create display lists by geom type */
-  glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
-  sc->glist = geomList(sc,mesh);
-#endif
 }
 
 
@@ -104,7 +98,7 @@ void doIsoLists(pScene sc,pMesh mesh,int reset) {
         if ( sc->slist[kk] )  glDeleteLists(sc->slist[kk],1);
         sc->slist[kk] = (GLuint)0;
       }
-      sc->slist = NULL;
+      sc->slist = (GLuint)0;
       if ( reset < 2 )   sc->stream->nbstl = 0;
       for (k=1; k<=mesh->np; k++) {
         ppt = &mesh->point[k];
@@ -342,12 +336,6 @@ void keyItem(unsigned char key,int x,int y) {
   case 'g':  /* const. items */
     if ( !sc->glist )  post = FALSE;
     sc->item ^= S_GEOM;
-#ifdef IGL
-    if(sc->item | S_GEOM)
-    {
-      doLists(sc,mesh);
-    }
-#endif
     break;
   case 'N':
     if ( mesh->nvn )
@@ -359,11 +347,11 @@ void keyItem(unsigned char key,int x,int y) {
     if ( mesh->nvn ) {
       sc->type ^= S_OPPOS;
       if ( sc->nlist ) {
-	glDeleteLists(sc->nlist,1);
-	sc->nlist = 0;
+	      glDeleteLists(sc->nlist,1);
+	      sc->nlist = 0;
       }
       else 
-	post = FALSE;
+	      post = FALSE;
     }
     else
       post = FALSE;
@@ -604,8 +592,8 @@ void keyView(unsigned char key,int x,int y) {
   case 'R':
     sc->type |= S_RESET;
     dmax = mesh->xmax - mesh->xmin;
-    dmax = MEDIT_MAX(dmax,mesh->ymax - mesh->ymin);
-    dmax = MEDIT_MAX(dmax,mesh->zmax - mesh->zmin);
+    dmax = max(dmax,mesh->ymax - mesh->ymin);
+    dmax = max(dmax,mesh->zmax - mesh->zmin);
     sc->cx = sc->cy = sc->cz = 0.0f;
     sc->dmax = fabs(dmax);
     if ( sc->persp->pmode == PERSPECTIVE ) {
@@ -937,8 +925,8 @@ void keyMetric(unsigned char key,int x,int y) {
   case 'd': /* displacement */
     if ( !mesh->nbb || mesh->nfield != mesh->dim )  return;
     sc->mode ^= S_DISPL;
-	meshCoord(mesh,(sc->mode & S_DISPL) ? 1 : 0);
-	meshBox(mesh,1);
+	  meshCoord(mesh,(sc->mode & S_DISPL) ? 1 : 0);
+	  meshBox(mesh,0);
     doLists(sc,mesh);
     if ( sc->mode & S_MAP ) doMapLists(sc,mesh,1);
     if ( sc->isotyp )       doIsoLists(sc,mesh,1);
@@ -965,9 +953,10 @@ void keyMetric(unsigned char key,int x,int y) {
           sc->picklist = 0;
           break;
         }
-        else
+        else {
           sc->picklist = drawAllEllipse(sc,mesh);
           break;
+        }
       }
       return;
     }
@@ -982,7 +971,7 @@ void keyMetric(unsigned char key,int x,int y) {
     if ( mesh->dim != 2 )  return;
     sc->mode ^= S_ALTITUDE;
     if ( altcoef == 0.0 ) {
-      maxd = MEDIT_MAX(mesh->xmax-mesh->xmin,mesh->ymax-mesh->ymin);
+      maxd = max(mesh->xmax-mesh->xmin,mesh->ymax-mesh->ymin);
       altcoef = 0.3*maxd / mesh->bbmax;
     }
     if ( !(sc->mode & S_ALTITUDE) ) 
@@ -1077,7 +1066,7 @@ int createMenus(pScene sc,pMesh mesh) {
       glutAddMenuEntry("    Toggle iso-surfaces",'s');
     if ( mesh->nfield == mesh->dim ) {
       glutAddMenuEntry("[w]  Toggle vector/tensor",'w');
-	  glutAddMenuEntry("     Toggle displacement",'d');
+	    glutAddMenuEntry("     Toggle displacement",'d');
       glutAddMenuEntry("[v]  Toggle streamlines",'v');
       glutAddMenuEntry("     Flush streamlines",'f');
       glutAddMenuEntry("     Particle advection",'u');
@@ -1187,7 +1176,6 @@ int createMenus(pScene sc,pMesh mesh) {
   glutAddMenuEntry("",'\0');
   glutAddMenuEntry("Close window",'X');
   glutAddMenuEntry("Quit",'q');
-
 
   return(1);
 }

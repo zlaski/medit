@@ -1,21 +1,13 @@
 #include "medit.h"
-#ifdef IGL
-extern "C"{
-#endif
 #include "libmesh5.h"
-#ifdef IGL
-}
-#endif
 #include "extern.h"
-#ifdef IGL
-#include "eigenv.h"
-#endif
 
 
 int loadMesh(pMesh mesh) {
   pPoint      ppt;
   pEdge       pr;
   pTriangle   pt;
+	pTriangle2  pt2;
   pQuad       pq;
   pTetra      ptet;
   pHexa       ph;
@@ -24,7 +16,6 @@ int loadMesh(pMesh mesh) {
   int         i,ia,ib,inm,ref,is,k,disc,nn,nt,nq;
   char       *ptr,data[256];
 
-  printf("use loadMesh\n");
   /* default */
   strcpy(data,mesh->name);
   ptr = strstr(data,".mesh");
@@ -35,22 +26,21 @@ int loadMesh(pMesh mesh) {
       *ptr = '\0';
       strcat(data,".mesh");
       if ( !(inm = GmfOpenMesh(data,GmfRead,&mesh->ver,&mesh->dim)) ) {
-        fprintf(stderr,"  ** %s  NOT FOUND.\n",data);
+        if ( ddebug )  fprintf(stderr,"  ** %s  NOT FOUND.\n",data);
         return(-1);
       }
     }
   }
   else if (!(inm = GmfOpenMesh(data,GmfRead,&mesh->ver,&mesh->dim)) ) {
-    fprintf(stderr,"  ** %s  NOT FOUND.\n",data);
+    if ( ddebug )  fprintf(stderr,"  ** %s  NOT FOUND.\n",data);
     return(-1);
   }
   if ( !quiet )  fprintf(stdout,"  Reading %s\n",data);
 
   /* parse keywords */
   mesh->np   = GmfStatKwd(inm,GmfVertices);
-  printf("mesh->np=%i\n",mesh->np);
   mesh->nt   = GmfStatKwd(inm,GmfTriangles);
-  printf("mesh->nt=%i\n",mesh->nt);
+  mesh->nt2  = GmfStatKwd(inm,GmfTrianglesP2);
   mesh->nq   = GmfStatKwd(inm,GmfQuadrilaterals);
   mesh->ntet = GmfStatKwd(inm,GmfTetrahedra);
   mesh->nhex = GmfStatKwd(inm,GmfHexahedra);
@@ -61,8 +51,9 @@ int loadMesh(pMesh mesh) {
   mesh->nre  = GmfStatKwd(inm,GmfRequiredEdges);
   mesh->nvn  = GmfStatKwd(inm,GmfNormals);
   mesh->ntg  = GmfStatKwd(inm,GmfTangents);
-  mesh->ne = mesh->nt + mesh->nq + mesh->ntet + mesh->nhex;
-
+  mesh->ne  = mesh->nt + mesh->nq + mesh->ntet + mesh->nhex;
+	mesh->ne2 = mesh->nt2 + mesh->ntet2;
+ 
   /* check space dimension */
   if ( mesh->dim < 2 || mesh->dim > 3 ) {
 	fprintf(stdout,"  ## Wrong dim\n");
@@ -89,15 +80,14 @@ int loadMesh(pMesh mesh) {
     if ( mesh->ver == GmfFloat ) {
       if ( mesh->dim == 2 ) {
         GmfGetLin(inm,GmfVertices,&fp1,&fp2,&ref);
-  	    ppt->c[0] = fp1;
-  	    ppt->c[1] = fp2;
-	    printf("vertices %f %f %i\n",fp1,fp2,ref);
+  	    ppt->c[0] = fp1;  /* 0.25*fp1+0.5 */
+  	    ppt->c[1] = fp2;  /* 0.25*fp2+0.5 */
       }
       else {
         GmfGetLin(inm,GmfVertices,&fp1,&fp2,&fp3,&ref);
   	    ppt->c[0] = fp1;
   	    ppt->c[1] = fp2;
-	    ppt->c[2] = fp3;
+		    ppt->c[2] = fp3;
       }
     }
     else {
@@ -127,11 +117,30 @@ int loadMesh(pMesh mesh) {
     for (i=0; i<3; i++) {    
       if ( pt->v[i] < 1 || pt->v[i] > mesh->np ) {
         disc++;
-    pt->v[0] = 0;
+        pt->v[0] = 0;
         break;
       }
       else {
         ppt = &mesh->point[pt->v[i]];
+        ppt->tag &= ~M_UNUSED;
+      }
+    }
+  }
+
+  /* read P2 triangles */
+  GmfGotoKwd(inm,GmfTrianglesP2);
+  for (k=1; k<=mesh->nt2; k++) {
+    pt2 = &mesh->tria2[k];
+    GmfGetLin(inm,GmfTriangles,&pt2->v[0],&pt2->v[1],&pt2->v[2],&pt2->v[3],pt2->v[4],pt2->v[5],&ref);
+    pt2->ref  = ref & 0x7fff;
+    for (i=0; i<6; i++) {    
+      if ( pt2->v[i] < 1 || pt2->v[i] > mesh->np ) {
+        disc++;
+        pt2->v[0] = 0;
+        break;
+      }
+      else {
+        ppt = &mesh->point[pt2->v[i]];
         ppt->tag &= ~M_UNUSED;
       }
     }
@@ -310,7 +319,7 @@ int loadMesh(pMesh mesh) {
       if ( nt < 1 || nt > mesh->nt || is < 1 || is > 3 || nn < 1 || nn > mesh->nvn )
         disc++;
       else
-    mesh->extra->nt[3*(nt-1)+is] = nn;
+        mesh->extra->nt[3*(nt-1)+is] = nn;
     }
 
     /*normals at quadrilateral vertices */
@@ -440,6 +449,7 @@ static int markPt(pMesh mesh) {
 /* save (part of) mesh to disk */
 int saveMesh(pScene sc,pMesh mesh,char *fileout,ubyte clipon) {
   pPoint     ppt;
+	pEdge      pa;
   pTriangle  pt;
   pQuad      pq;
   pTetra     ptt;
@@ -460,14 +470,14 @@ int saveMesh(pScene sc,pMesh mesh,char *fileout,ubyte clipon) {
   np = 0;
   for (k=1; k<=mesh->np; k++) {
     ppt = &mesh->point[k];
-    if ( ppt->tag & M_UNUSED )  continue;
+    /*if ( ppt->tag & M_UNUSED )  continue;*/
     ppt->tmp = ++np;
   }
 
   GmfSetKwd(outm,GmfVertices,np);
   for (k=1; k<=mesh->np; k++) {
     ppt = &mesh->point[k];
-    if ( ppt->tag & M_UNUSED )  continue;
+    /*if ( ppt->tag & M_UNUSED )  continue;*/
     ref = ppt->ref;
     if ( mesh->dim == 2 ) {
       fp1 = ppt->c[0] + mesh->xtra;
@@ -536,6 +546,23 @@ int saveMesh(pScene sc,pMesh mesh,char *fileout,ubyte clipon) {
     ref = pq->ref;
     GmfSetLin(outm,GmfQuadrilaterals,mesh->point[pq->v[0]].tmp,mesh->point[pq->v[1]].tmp,
               mesh->point[pq->v[2]].tmp,mesh->point[pq->v[3]].tmp,ref);
+  }
+
+  /* write edges */
+  GmfSetKwd(outm,GmfEdges,mesh->na);
+  for (k=1; k<=mesh->na; k++) {
+    pa = &mesh->edge[k];
+    if ( !pa->v[0] )  continue;
+    GmfSetLin(outm,GmfEdges,mesh->point[pa->v[0]].tmp,mesh->point[pa->v[1]].tmp,pa->ref);
+  }
+  /* write ridges */
+	nt = 0;
+  GmfSetKwd(outm,GmfRidges,mesh->nr);
+  for (k=1; k<=mesh->na; k++) {
+    pa = &mesh->edge[k];
+    if ( !pa->v[0] )  continue;
+    if ( pa->tag & M_RIDGE )
+      GmfSetLin(outm,GmfRidges,++nt);
   }
 
   /* write tetrahedra */
@@ -607,7 +634,6 @@ int loadSol(pMesh mesh,char *filename,int numsol) {
   else {
     mesh->typage = 1;
     if ( mesh->dim == 2 && mesh->nt ) {
-      //if( mesh->nt){
       nel = GmfStatKwd(inm,GmfSolAtTriangles,&type,&size,typtab);
       if ( nel && nel != mesh->nt ) {
         fprintf(stderr,"  %%%% Wrong number %d.\n",nel);
@@ -645,7 +671,7 @@ int loadSol(pMesh mesh,char *filename,int numsol) {
     }
   }
   if ( !nel )  return(1);
-  if(ddebug) printf("numsol=%i, type=%i, size=%i\n",numsol,type,size); 
+
   if ( numsol > type )  numsol = 1;
   numsol--;
   mesh->nbb    = nel;
@@ -661,7 +687,6 @@ int loadSol(pMesh mesh,char *filename,int numsol) {
 
   off = 0;
   for (i=0; i<numsol; i++) {
-    if(ddebug) printf("typtab[%i]=%i",i,typtab[i]); 
     switch(typtab[i]) {
       case GmfSca:  
         off++; break;
@@ -671,13 +696,10 @@ int loadSol(pMesh mesh,char *filename,int numsol) {
         off += sol->dim*(sol->dim+1)/2;  break;
     }
   }
-  if(ddebug) printf("typtab[%i]=%i, off%i",i,typtab[i],off); 
 
   GmfGotoKwd(inm,key);
-  if(ddebug) printf("numsol=%i,typtab[i]=%i\n",numsol,typtab[i]); 
   switch(typtab[numsol]) {
     case GmfSca:
-      if ( ddebug )  printf("   scalar field\n");
       mesh->nfield = 1;
       for (k=1; k<=nel; k++) {
         if ( sol->ver == GmfFloat )
@@ -688,8 +710,8 @@ int loadSol(pMesh mesh,char *filename,int numsol) {
             fbuf[i] = dbuf[off+i];
         }
         mesh->sol[k].bb = fbuf[off];
-	if(ddebug) printf("valeur donneer %i %f\n",k,fbuf[off]);
-	if ( mesh->sol[k].bb < mesh->bbmin )  mesh->bbmin = mesh->sol[k].bb;
+				if ( fabs(mesh->sol[k].bb) < 1.e-12 )  mesh->sol[k].bb = 0.0;
+        if ( mesh->sol[k].bb < mesh->bbmin )  mesh->bbmin = mesh->sol[k].bb;
         if ( mesh->sol[k].bb > mesh->bbmax )  mesh->bbmax = mesh->sol[k].bb;
       }
       break;
@@ -698,7 +720,7 @@ int loadSol(pMesh mesh,char *filename,int numsol) {
       if ( ddebug )  printf("   vector field\n");
       mesh->nfield = sol->dim;
       for (k=1; k<=nel; k++) {
-	mesh->sol[k].bb = 0.0;
+		    mesh->sol[k].bb = 0.0;
         if ( sol->ver == GmfFloat )
           GmfGetLin(inm,key,fbuf);
         else {
@@ -708,7 +730,6 @@ int loadSol(pMesh mesh,char *filename,int numsol) {
         }
         for (i=0; i<sol->dim; i++) {
           mesh->sol[k].m[i] = fbuf[off+i];
-	  if(ddebug) printf("valeur donner %i composante %i %f\n",k,i,fbuf[off+i]);
           mesh->sol[k].bb  += fbuf[off+i]*fbuf[off+i];
         }
         mesh->sol[k].bb = sqrt(mesh->sol[k].bb);
@@ -733,7 +754,7 @@ int loadSol(pMesh mesh,char *filename,int numsol) {
           for (i=0; i<3; i++)  
             mesh->sol[k].m[i] = m[i] = fbuf[off+i];
           iord = eigen2(m,lambda,vp);
-          mesh->sol[k].bb = MEDIT_MIN(lambda[0],lambda[1]);
+          mesh->sol[k].bb = min(lambda[0],lambda[1]);
           if ( mesh->sol[k].bb < mesh->bbmin )  mesh->bbmin = mesh->sol[k].bb;
           if ( mesh->sol[k].bb > mesh->bbmax )  mesh->bbmax = mesh->sol[k].bb;
         }
@@ -746,8 +767,8 @@ int loadSol(pMesh mesh,char *filename,int numsol) {
           iord = eigenv(1,m,lambda,eigv);
           if ( iord ) {
             mesh->sol[k].bb = lambda[0];
-            mesh->sol[k].bb = MEDIT_MAX(mesh->sol[k].bb,lambda[1]);
-            mesh->sol[k].bb = MEDIT_MAX(mesh->sol[k].bb,lambda[2]);
+            mesh->sol[k].bb = max(mesh->sol[k].bb,lambda[1]);
+            mesh->sol[k].bb = max(mesh->sol[k].bb,lambda[2]);
             if ( mesh->sol[k].bb < mesh->bbmin )  mesh->bbmin = mesh->sol[k].bb;
             if ( mesh->sol[k].bb > mesh->bbmax )  mesh->bbmax = mesh->sol[k].bb;
           }
@@ -755,7 +776,14 @@ int loadSol(pMesh mesh,char *filename,int numsol) {
     }
     break;
   }
+  if ( ddebug )  printf("   sol min: %e  max:%e\n",mesh->bbmin,mesh->bbmax);
 
+  if ( GmfStatKwd(inm,GmfTime,&type,&size,typtab) ) {
+	  GmfGotoKwd(inm,GmfTime);
+  	GmfGetLin(inm,GmfTime,&fbuf[0]);
+		sol->time = fbuf[0];
+	}
+	
   GmfCloseMesh(inm);
   return(1);  
 }
