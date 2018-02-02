@@ -52,3 +52,4 @@ compil.date
 *.opendb
 *.iobj
 *.ipdb
+*.cache
